@@ -115,6 +115,12 @@
         text-align: center;
         font-size: 16px;
       }
+      figcaption {
+        font-size: 16px; /* Caption size */
+        color: #ffffff; /* White caption text */
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+        text-align: center;
+      }
     </style>
   </head>
   <body>
@@ -263,7 +269,7 @@
           <nav class="l-text figcaption">
             <h3>Contents</h3>
             <div><a href="#background">Background</a></div>
-            <div><a href="#summary">Summary</a></div>
+            <div><a href="#notes">Organizational notes</a></div>
             <div><a href="#chunks">Text Chunking</a></div>
             <div><a href="#entities">Entity extraction</a></div>
             <div><a href="#clustering">Graph clustering</a></div>
@@ -277,27 +283,49 @@
             <div><a href="#other-typography">Other Typography?</a></div> -->
           </nav>
         </d-contents>
-        <h2 id="background">Background</h2>
+        <h2 id="background">Introduction</h2>
         <p>
-          This blog represents my attempt at replicating, understanding the
-          limitations of GraphRAG
-          <d-cite key="edge2024localglobalgraphrag"></d-cite> approach to
-          retrieval with LLMs and thinking about tradeoffs to be made when
-          working with retrieval systems in general. The major considerations
-          were surrounding the number of api calls for a single user query and
-          the speed of retrieval.
+          Microsoft research recently put out the GraphRAG paper
+          <d-cite key="edge2024localglobalgraphrag"></d-cite>. In this post, I
+          share my attempt at replicating the paper and some thoughts about
+          tradeoffs to be made when working with retrieval systems in general.
         </p>
         <p>
-          It was also an opportunity to upskill as a research engineer and
-          explore different tools to get the job done as fast as possible, as
-          efficient as possible.
+          The summary of the paper is, we can structure the information in a
+          body of documents as a graph by thinking of every object in the
+          document as an entity and drawing it's relationship with other
+          entities. Once we have this graph, we can then reason over it to draw
+          insights and conclusions that otherwise we might not be able to draw.
+          <figure>
+            <img
+              src="/assets/img/graphrag/pipeline.png"
+              class="img-fluid rounded z-depth-1"
+              width="100%"
+              height="auto"
+              loading="eager"
+              onerror="this.onerror=null; $('.responsive-img-srcset').remove();"
+              alt="Snippet from entity extraction prompt"
+            />
+            <figcaption>GraphRAG pipeline.</figcaption>
+          </figure>
+        </p>
+        <p>
+          In the paper, Microsoft research used podcast transcripts and news
+          article as the knowledge source over which retrieval is done. I
+          decided to use a podcast episode - specifically,
+          <a href="https://www.youtube.com/watch?v=UTuuTTnjxMQ"
+            >Dwarkesh Patel's interview with Mechanistic Interpretability
+            researchers Trenton Bricken and Sholto Douglas</a
+          >.
         </p>
         <p>
           I would expect readers to be fairly familiar with the GraphRAG paper
           <d-cite key="edge2024localglobalgraphrag"></d-cite>.
         </p>
 
-        <h2 id="summary">Summary</h2>
+        <h2 id="notes">Organizatinal notes</h2>
+        I encourage readers to probably read through the whole post and refer to
+        this section from time to time.
         <ul>
           <li>
             For evaluation, I used one of the transcripts of
@@ -306,7 +334,7 @@
             >
             as the knowledge source.
           </li>
-          <li>Chunking was primarily based on conversation turn.</li>
+
           <li>
             During development, I used a bunch of models to test out the
             different components, but for the final graph index generation and
@@ -314,7 +342,15 @@
             <a href="https://console.groq.com/settings/limits"
               >LLAMA 3.2 90B text-preview</a
             ><d-cite key="llama3_2"></d-cite>, provided by
-            <a href="https://console.groq.com/playground">Groq</a>.
+            <a href="https://console.groq.com/playground">Groq</a>. That being
+            said, Gemma 9B seems to perform the best on entity-relationship
+            extraction
+            <d-footnote
+              >I judged this because I have listened to the podcast episode and
+              I was able to roughly access the quality of the generation for
+              different models.</d-footnote
+            >
+            .
           </li>
           <li>
             I implemented a single hierarchy of clustering graph nodes and
@@ -353,12 +389,19 @@
         </ul>
         <h2 id="chunks">Text Chunking</h2>
         <p>
-          I thought to take advantage of the structure of podcase transcripts,
-          which is usually turn based.
+          Dwarkesh provides
+          <a
+            href="https://www.dwarkeshpatel.com/p/sholto-douglas-trenton-bricken?open=false#%C2%A7transcript"
+            >links</a
+          >
+          to the transcripts of his podcast episodes, so it was easy to get the
+          transcripts of the episode. To preserve the notion of turn-based
+          conversation, I chunked the transcript text based on each speaker's
+          speech.
           <details>
             <summary>More info</summary>
             <p>
-              Usually, podcast transcripts are roughly structured as
+              Usually, the podcast transcripts are roughly structured as
               <figure class="highlight">
                 <pre><code class="language-python" data-lang="python"><span class="kn">Speaker A (timestamp)</span> 
 <span class="kn"># Speaker A's speech</span>
@@ -368,20 +411,16 @@
               </figure>
             </p>
           </details>
-          The reasoning behind this was that it's much easier to make sense of a
-          body of text that's from a speaker in a single turn, from start to
-          finish, than a text consisting of the second half of a speech, for
-          example, which might be the case with arbitrary chunking.
         </p>
+
         <p>
-          I scraped the
+          After chunking the
           <a
             href="https://www.dwarkeshpatel.com/p/sholto-douglas-trenton-bricken?open=false#%C2%A7transcript"
             >transcripts</a
           >
-          webpage and initially, I split the whole document along each speaker's
-          speech, which resulted in approximately 483 chunks. I analyzed the
-          token length of each chunk.
+          along each speaker's speech, there were approximately 483 chunks. I
+          analyzed the token length of each chunk.
           <img
             src="/assets/img/graphrag/Sholto&Trenton.png"
             class="img-fluid rounded z-depth-1"
@@ -392,23 +431,14 @@
             alt="Token distribution for chunks in the original chunk set"
           />
         </p>
-
-        <ol>
-          <li>
-            This would mean that for only entity extraction with multiple rounds
-            of gleaning, there would be multiple API calls for each chunk, which
-            is expensive and not very efficient.
-          </li>
-          <li>
-            In the graphrag paper
-            <d-cite key="edge2024localglobalgraphrag"></d-cite>, the number of
-            chunk tokens used was
-            <code class="language-plaintext">600</code> tokens.
-          </li>
-        </ol>
         <p>
-          I <strong>used</strong> an average chunk size of 1000 tokens. This
-          reduced the number of chunks from
+          Along the lines of the original paper and for reasons I explain the
+          next section, I decided to merge chunks, such that each chunk had an
+          average size of 1000 tokens
+          <d-footnote
+            >In the original paper, the authors used an average size of 600
+            tokens. </d-footnote
+          >. This reduced the number of chunks from
           <code class="language-plaintext">483</code> to
           <code class="language-plaintext">47</code>.
           <img
@@ -421,34 +451,56 @@
             alt="Token distribution for chunks in the original chunk set"
           />
         </p>
-        <h2 id="entities">Entity extraction</h2>
 
+        <h2 id="entities">Entity extraction</h2>
         <p>
-          For each chunk, extracting the entity types before extracting the
-          entity details and the relationship details was token-expensive. So I
-          hardcoded a bunch of entity types and manually asked ChatGPT to
-          extract entity types from some random sample of chunks. I ended up
-          with about
+          I hardcoded a list of entity types and manually asked ChatGPT to
+          extraxt entity types from some random sample of chunks, which I then
+          filtered for repeated entity types - this was because extracting the
+          entity type for each chunk was expensive with respect to api calls. I
+          ended up with a list of
           <a
             href="https://github.com/israel-adewuyi/graphrag/blob/master/config/entities.py"
             >33 entity types.</a
-          >It's unsure the relationship between the number of entity types and
-          how much information is extracted from the chunks.
+          >.
         </p>
+        <!-- TODO: in thinking, rltn between entity types and the quality of info retrieved.-->
+        <p>The entity-relationship extraction phase is in two stages.</p>
         <p>
-          For each chunk from the previous section, I prompted the LLM to
-          extract all the entities and the relationship between them. I also did
-          a single round of gleaning for each chunk to ensure that all the
-          entities and relationship have been extracted.
+          In the first stage, I prompted the LLM to extract all the entities and
+          relationships from each chunk and output the results in json format.
+          For each entity, I extract the entity_name, entity_type and
+          description. For each relationship, I extract the source entity,
+          target entity, relationship description.
+        </p>
+        <figure>
+          <img
+            src="/assets/img/graphrag/image.png"
+            class="img-fluid rounded z-depth-1"
+            width="100%"
+            height="auto"
+            loading="eager"
+            onerror="this.onerror=null; $('.responsive-img-srcset').remove();"
+            alt="Snippet from entity extraction prompt"
+          />
+          <figcaption>Snippet from entity extraction prompt.</figcaption>
+        </figure>
+        <p>
+          In the second stage, for each entity-relationship json retrieved for
+          each chunk, I prompt the LLM a second time to check if it has
+          extracted all the possible entities and relationship. The authors
+          referred to this as gleaning
           <d-footnote
-            >The prompts I used here and other parts of the implementation were
+            >The prompts I used here and other parts of this implementation were
             largely taken from
             <a
               href="https://github.com/microsoft/graphrag/tree/main/graphrag/prompt_tune/template"
               >the official github implementation.</a
-            >
-          </d-footnote>
+            > </d-footnote
+          >. For most chunks, this seemed to extract almost as many
+          relationships as it did, the first time.
         </p>
+
         <p>
           A <a href="/assets/html/network.html">knowledge graph</a> is then
           built from the entities and their relationships that have been
@@ -470,7 +522,20 @@
           are a bunch of entities that are not captured in any relatioship with
           another entity.
         </p>
+
+        <p>
+          In practise, this means that there were two api calls per chunk. In
+          the previous setup where I had > 450 chunks, this would have been
+          close to 1000 api calls but now, I had less than 100 chunks for the
+          whole document.
+        </p>
         <h2 id="clustering">Graph clustering</h2>
+        <p>
+          Now, we have a graph that's fairly representative of the whole
+          document. A key insight at this stage is that we can group nodes and
+          edges into communities which in principle should be representative of
+          some semantic relatinoship between all the nodes in the community.
+        </p>
         <p>
           In following with the original paper, I used the Leiden algorithm
           <d-cite key="traag2019louvain"></d-cite> provided in
@@ -558,6 +623,13 @@
             like GPT 4o.
           </li>
           <li>
+            Gleaning was able to capture significantly more relationships, but
+            more entities were also introduced to the knowledge graph. I expect
+            that with more rounds of gleaning, this should be resolved neatly.
+            However, it's unclear if more rounds of gleaning will be supported
+            by the context length of the model.
+          </li>
+          <li>
             The approach of drawing insights from communities and using these
             insights to generate response would add alot of latency to the
             retrival process when this is over huge datasets, such as the whole
@@ -569,22 +641,25 @@
             such texts.
           </li>
           <li>
-            Gleaning was able to capture significantly more relationships, but
-            more entities were also introduced to the knowledge graph. I expect
-            that with more rounds of gleaning, this should be resolved neatly.
-            However, it's unclear if more rounds of gleaning will be supported
-            by the context length of the model.
+            Work is not done. I plan to extend this to, at the time of this
+            writing, ~80 Dwarkesh episodes.
           </li>
         </ol>
         <h2 id="Acknowledgements">Acknowledgements</h2>
         <ol>
           <li>
-            <strong>Professor Rustam Lukmanov</strong> for suggesting the
-            project in the first place.
+            <a href="https://rustam-lukmanov.com/">Professor Rustam Lukmanov</a>
+            for suggesting the project in the first place, providing feedback
+            and the motivation to do this write-up.
           </li>
           <li>
             <a href="http://kimfom.space">Kim Fom</a> for useful feedback on
             writing good code.
+          </li>
+          <li>
+            <strong>Khush Patel</strong> for some advice related to deployment
+            of the admittedly unpolished interface and tradeoffs when choosing a
+            vectorDB.
           </li>
         </ol>
       </d-article>
