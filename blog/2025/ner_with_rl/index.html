@@ -281,14 +281,15 @@
     </header>
     <div class="post distill">
       <d-title>
-        <h1>Solving NER with RL</h1>
-        <p>something nice to say here, please</p>
+        <h1>[Draft] RL-NER</h1>
+        <p>an attempt at solving Named Entity Recognition with RL training.</p>
       </d-title>
       <d-byline></d-byline>
       <d-article>
         <d-contents>
           <nav class="l-text figcaption">
             <h3>Contents</h3>
+            <div><a href="#karoche">TLDR</a></div>
             <div><a href="#intro">Introduction</a></div>
             <div><a href="#background">Background</a></div>
             <nav class="sub-nav">
@@ -306,7 +307,7 @@
                 <div><a href="#few-shot">Few shot demonstrations</a></div>
                 <div><a href="#output-format">LLM Output Format</a></div>
               </nav>
-              <div><a href="#reward">Reward design</a></div>
+              <div><a href="#reward">RL and Reward design</a></div>
             </nav>
             <div><a href="#experiment">Experiment</a></div>
             <div><a href="#results">Results</a></div>
@@ -316,6 +317,26 @@
             <div><a href="#other-typography">Other Typography?</a></div> -->
           </nav>
         </d-contents>
+        <h2 id="karoche">TLDR</h2>
+        <ul>
+          <li>
+            Via RL training, we achieved up to 7.3% increase in F1 score on a
+            1.5B model, on an NER task, compared to 175B GPT3-based baselines.
+          </li>
+          <li>
+            The RL trained model underperforms some other approaches, mostly
+            involving some form of SFT.
+          </li>
+          <li>
+            We offer some closing thoughts on this as well as future possible
+            directions of research.
+          </li>
+        </ul>
+        <p>
+          Feel free to skip to Methods section or start from the introduction
+          below.
+        </p>
+        <p>Repository is here and models are uploaded here.</p>
         <h2 id="intro">Introduction</h2>
         <p>
           Large Language Models (LLMs) built on the Transformer architecture
@@ -397,12 +418,19 @@
         </p>
         <h3 id="unsupervised">Summary of unsupervised approaches</h3> -->
         <p>
-          The core idea in most of the works listed below involves some
-          combination of In Context Learning (ICL), Supervised Finetuning (SFT).
-          In the ICL paradigm,LLMs learn new tasks by including a few examples
-          in the prompt which makes them flexible for new tasks without extra
-          training while in the SFT paradigm, an LLM is further trained on
-          specific, labeled data to make it better at that task.
+          The core idea in most of the works listed below involves primarily
+          prompt engineering
+          <d-note>
+            Which is just a fancy way of saying almost all of them reformulated
+            the task in some way that the LLM might be able to solve
+            easier.</d-note
+          >
+          and some combination of In Context Learning (ICL), Supervised
+          Finetuning (SFT). In the ICL paradigm, LLMs learn new tasks by being
+          shown a few examples in the prompt which makes them flexible for new
+          tasks without extra training while in the SFT paradigm, an LLM is
+          further trained on specific, labeled data to make it better at that
+          task.
           <d-footnote
             >It's akin to fine-tuning a general tool for a specific
             job.</d-footnote
@@ -410,12 +438,17 @@
         </p>
         <p>
           GPT-NER
-          <d-cite key="wang2023gptnernamedentityrecognition"></d-cite>
-          reformulated the sequence labelling task as a text generation task.
-          The LLM (GPT3) is prompted to output the entities in the given text
-          surrounded by special tokens with ICL and SFT improving the
-          performance. The authors also extended their approach by finetuning a
-          specialized NER model for retrieval of few-shot examples.
+          <d-cite key="wang2023gptnernamedentityrecognition"></d-cite> and LTNER
+          <d-cite key="Yan2024LTNERLL"></d-cite>
+          reformulated the sequence labelling task as a text generation task by
+          prompting the LLM to generate the input text with the identified
+          entities marked by special tokens. Both methods rely heavily on ICL
+          For retrieving these few-shot examples, GPT-NER investigated various
+          strategies including embeddings derived from a fine-tuned NER model
+          while LTNER utilizes vector-based retrieval from a knowledge base to
+          find the most relevant examples for contextual learning. Additionally,
+          GPT-NER introduced a self-verification strategy to combat
+          hallucination.
         </p>
         <p>
           PromptNER <d-cite key="Ashok2023PromptNERPF"></d-cite> kept the task
@@ -435,23 +468,11 @@
           InstructUIE employs natural language instructions within a unified
           text-to-text framework to model various IE tasks.
         </p>
-
         <p>
-          Works like LTNER also used GPT-3 but they coupled this with context
-          learning and the authors were able to get up to 91%, which is
-          competitive with supervised finetuning methods.
-        </p>
-
-        <p>
-          RL offers a compelling alternative by aligning an LLM’s behavior with
-          NER-specific objectives through carefully designed rewards, unlocking
-          latent capabilities without extensive retraining. Our project uses RL
-          to fine-tune a 1.5B-parameter Qwen2.5 model on the CoNLL-2003 dataset,
-          a standard benchmark for NER that includes entities like Person,
-          Location, Organization, and Miscellaneous. By shaping rewards to
-          prioritize correct entity identification and structured output
-          formatting, we aim to make a small LLM perform competitively with much
-          larger models.
+          CodeIE <d-cite key="Li2023CodeIELC"></d-cite> and Code4UIE
+          <d-cite key="Guo2023RetrievalAugmentedCG"></d-cite> also transform the
+          sequence labelling task into a code generation task to leverage the
+          code generation capabilities of LLMs.
         </p>
 
         <h2 id="method">Method</h2>
@@ -546,9 +567,9 @@
           input sentence, N prompts are constructed where N is the number of
           entities in the dataset <d-footnote>N = 4 for CoNLL2003</d-footnote>.
           Following the PromptNER
-          <d-cite key="Ashok2023PromptNERPF"></d-cite> paper, we also added to
-          the prompt, the explanation for each entity that the LLM is meant to
-          extract for the current input text.
+          <d-cite key="Ashok2023PromptNERPF"></d-cite> paper, we asked the model
+          to generate a CoT inside the think tag and we also added an
+          explanation for each entity type to the prompt.
         </p>
         <br />
         <br />
@@ -605,7 +626,11 @@
         <p>
           For each output in the group, four reward functions were designed to
           provide signals to the policy model. The design of the reward function
-          follows the amazing work of Willccb on grpo for GSM8k.
+          was inspired by the amazing work of
+          <a
+            href="https://gist.github.com/willccbb/4676755236bb08cab5f4e54a0475d6fb"
+            >Willccb's grpo demo</a
+          >.
         </p>
         <ul>
           <li>
@@ -659,10 +684,17 @@
 
         <h2 id="experiment">Experiment</h2>
         <p>
-          As stated earlier, Qwen2.5-1.5B was utilized in this experiment.
-          Huggingface provides an easy-to-use implementation of GRPO in the TRL
-          module. The model was also trained on 4 epochs. Relevant
-          hyperparameters are:
+          As stated earlier,
+          <a href="https://huggingface.co/Qwen/Qwen2-1.5B-Instruct"
+            >Qwen2-1.5B-Instruct</a
+          >
+          was utilized in this experiment. Huggingface provides an easy-to-use
+          implementation of GRPO in the
+          <a href="https://huggingface.co/docs/trl/main/en/index"
+            >TRL library</a
+          >
+          . The model was also trained on 4 epochs on
+          <strong>2 Nvidia A100</strong> GPUs. Relevant hyperparameters are:
         </p>
         <pre>
   training_args = GRPOConfig(
@@ -687,8 +719,66 @@
         </pre>
         <p>More details can be found in the repository.</p>
         <h2 id="results">Results</h2>
+        <div style="max-width: 800px; margin: auto">
+          <canvas id="resultsChart" width="800" height="400"></canvas>
+        </div>
+        <div style="max-width: 900px; margin: auto">
+          <canvas id="modelSizeChart" width="800" height="400"></canvas>
+        </div>
+        <p>Notes:</p>
+        <ul>
+          <li>
+            Parameter count of code-davinci-003 isn't publicly known, but
+            inferring from the naming convention, it's based on the GPT3 model,
+            which is reported to be 175B.
+            <d-cite key="Brown2020LanguageMA"></d-cite>
+          </li>
+          <li>
+            GPT3.5-Turbo also doesn't have it's parameter count publicly known.
+            But based on the the GPT3 model count, 175B is conservative.
+          </li>
+          <li>
+            The same logic applies to GPT4. Though, it's rumoured to be around
+            1.7T parameters. So 175 is also conservative.
+          </li>
+        </ul>
+
         <h2>Closing thoughts</h2>
+        <p>
+          This work explored, albeit, in a limited scope, how much RL training
+          can improve the performance of LLMs on NER task and the results show
+          impressive performance for small-sized LLMs.
+        </p>
+        <p>
+          It's important to emphasize (and this are my current thoughts) that RL
+          training benefits from a good base pretrained model, as the current RL
+          training paradigm encourage exploitation more than they do
+          exploration. It's useful to think of the current RL training paradigm
+          as stabilizing the distribution over the domain of interest, so if the
+          model cannot, under any inference sampling, over number of generations
+          that tend to infinity, sample the answer, most likely it cannot be
+          learned during an RL training paradigm. This intuition is informed by
+          the performance of LLMs on math and code tasks under base + SFT + RL
+          vs only base and RL.
+        </p>
+        <p>
+          Future work would investigate other NER datasets (in other domains),
+          how much performance is lost or retained in other tasks/benchmarks of
+          interest, as well as how small can the models be to get competitive
+          performance, especially in real world applications, where the tradeoff
+          of efficiency and correctness is often the focal point.
+        </p>
+        <p>
+          It would also be interesting to do Interpretability on these models.
+          What about the model changes when it's RL trained
+        </p>
         <h2>Acknowledgements</h2>
+        <p>
+          Gratitude goes to the Institute of Software Engineering at Innopolis
+          university, led by Professor Vladmir Ivanov for providing compute. I
+          am also grateful to Ilnur Khadiev for helping out with fixing
+          GPU-related issues every so often.
+        </p>
         <h2>Citation information</h2>
         <h2 id="background">Things to check</h2>
 
@@ -697,12 +787,12 @@
             Might provide some motivating examples for using LLMs, even the 1.5B
             params to reason about the NER task.
           </li>
-          <li>Papers that reference LLMs struggling with RL</li>
+
           <li>
             I am open-sourcing the code, model and the output logs of the model
             during trainings
           </li>
-          <li>query in prompt should be something more descriptive, mann</li>
+
           <li>Filtering the train set might also be a good thing</li>
         </ul>
       </d-article>
@@ -778,6 +868,193 @@
       </div>
     </footer>
     <script src="/assets/js/bootstrap.bundle.min.js"></script>
+    <!-- Include Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+      const labels = [
+        "CodeIE",
+        "PromptNER",
+        "Code4UIE",
+        "GPT-NER (ICL)",
+        "OURS",
+        "GPT-NER (SFT+ICL)",
+        "LTNER",
+        "InstructUIE",
+        "GoLLIE",
+      ];
+
+      const data = {
+        labels: labels,
+        datasets: [
+          {
+            label: "F1 Score on CoNLL 2003",
+            data: [82.32, 83.48, 83.6, 85.9, 88.4, 90.91, 91.91, 92.94, 93.1],
+            backgroundColor: labels.map(
+              (label) =>
+                label === "OURS"
+                  ? "rgba(75, 192, 192, 0.8)" // Bright teal for OURS
+                  : "rgba(200, 200, 200, 0.6)" // Dull gray for others
+            ),
+            borderColor: labels.map((label) =>
+              label === "OURS" ? "rgb(75, 192, 192)" : "rgb(150, 150, 150)"
+            ),
+            borderWidth: 1,
+          },
+        ],
+      };
+
+      const config = {
+        type: "bar",
+        data: data,
+        options: {
+          responsive: true,
+          plugins: {
+            legend: {
+              display: false, // Optional: Hide legend since only one dataset
+            },
+            title: {
+              display: true,
+              text: "F1 Scores on CoNLL 2003 Dataset",
+            },
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: "F1 Score",
+              },
+            },
+          },
+        },
+      };
+
+      const ctx = document.getElementById("resultsChart").getContext("2d");
+      new Chart(ctx, config);
+    </script>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> -->
+
+    <!-- Script to render the model size chart -->
+    <script>
+      // Helper function to convert model size strings like "175B" to numeric values
+      const parseModelSize = (sizeStr) => {
+        if (!sizeStr) return 0;
+        const numPart = parseFloat(sizeStr.replace(/[^0-9.]/g, ""));
+        const billion = 1e9;
+        if (sizeStr.toLowerCase().includes("k")) return numPart * 1e3;
+        if (sizeStr.toLowerCase().includes("m")) return numPart * 1e6;
+        if (sizeStr.toLowerCase().includes("b")) return numPart * billion;
+        return numPart;
+      };
+
+      // Model data
+      const modelData = [
+        { name: "OURS\n(Qwen2.5-1.5B)", size: "1.5B", highlight: true },
+        { name: "InstructUIE\n(Flan-T5-11B)", size: "11B", highlight: false },
+        { name: "GoLLIE (Code-LLaMA)", size: "34B", highlight: false },
+        {
+          name: "GPT-NER\n(GPT3 - text-davinci-003)",
+          size: "175B",
+          highlight: false,
+        },
+        {
+          name: "GPT-NER\n(GPT3 - text-davinci-003)",
+          size: "175B",
+          highlight: false,
+        },
+        {
+          name: "CodeIE (GPT3.5 code-davinci-002)",
+          size: "175B",
+          highlight: false,
+        },
+        {
+          name: "Code4UIE (GPT3 - text-davinci-003)",
+          size: "175B",
+          highlight: false,
+        },
+        { name: "LTNER\n(GPT3.5-Turbo)", size: "175B", highlight: false },
+        { name: "PromptNER\n(GPT4)", size: "175B", highlight: false },
+      ];
+
+      // Parse sizes into numeric values for plotting
+      const model_name = modelData.map((m) => m.name);
+      const sizes = modelData.map((m) => parseModelSize(m.size));
+      const highlights = modelData.map((m) => m.highlight);
+
+      // Generate colors based on whether it's highlighted
+      const backgroundColors = highlights.map((isHighlighted) =>
+        isHighlighted ? "rgba(75, 192, 192, 0.8)" : "rgba(200, 200, 200, 0.6)"
+      );
+      const borderColors = highlights.map((isHighlighted) =>
+        isHighlighted ? "rgb(75, 192, 192)" : "rgb(150, 150, 150)"
+      );
+
+      // Configuration for the chart
+      const size_config = {
+        type: "bar",
+        data: {
+          labels: model_name,
+          datasets: [
+            {
+              label: "Model Size (Parameters)",
+              data: sizes,
+              backgroundColor: backgroundColors,
+              borderColor: borderColors,
+              borderWidth: 1,
+            },
+          ],
+        },
+        options: {
+          indexAxis: "y", // Horizontal bar chart
+          responsive: true,
+          plugins: {
+            title: {
+              display: true,
+              text: "Model Sizes (in Parameters)",
+            },
+            tooltip: {
+              callbacks: {
+                label: (context) => {
+                  const rawLabel = modelData[context.dataIndex].size;
+                  return ` Size: ${rawLabel}`;
+                },
+              },
+            },
+            legend: {
+              display: false,
+            },
+          },
+          scales: {
+            x: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: "Number of Parameters",
+              },
+              ticks: {
+                callback: function (value) {
+                  if (value >= 1e9) return value / 1e9 + "B";
+                  if (value >= 1e6) return value / 1e6 + "M";
+                  if (value >= 1e3) return value / 1e3 + "K";
+                  return value;
+                },
+              },
+            },
+            y: {
+              ticks: {
+                crossAlign: "far",
+              },
+            },
+          },
+        },
+      };
+
+      // Render the chart
+      const size_ctx = document
+        .getElementById("modelSizeChart")
+        .getContext("2d");
+      new Chart(size_ctx, size_config);
+    </script>
     <script
       src="https://cdn.jsdelivr.net/npm/mdbootstrap@4.20.0/js/mdb.min.js"
       integrity="sha256-NdbiivsvWt7VYCt6hYNT3h/th9vSTL4EDWeGs5SN3DA="
