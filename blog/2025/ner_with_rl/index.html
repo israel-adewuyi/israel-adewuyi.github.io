@@ -1,0 +1,1409 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no"
+    />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <title>Replicating GraphRAG paper | Israel Adewuyi</title>
+    <meta name="author" content="Israel Adewuyi" />
+    <meta
+      name="description"
+      content="this blog details my attempt at replicating the graphrag paper as well as the decisions I made."
+    />
+    <meta name="keywords" content="LLM, RAG, graphrag" />
+    <link
+      rel="stylesheet"
+      href="/assets/css/bootstrap.min.css?a4b3f509e79c54a512b890d73235ef04"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/mdbootstrap@4.20.0/css/mdb.min.css"
+      integrity="sha256-jpjYvU3G3N6nrrBwXJoVEYI/0zw8htfFnhT9ljN3JJw="
+      crossorigin="anonymous"
+    />
+    <link
+      defer
+      rel="stylesheet"
+      href="/assets/css/academicons.min.css?f0b7046b84e425c55f3463ac249818f5"
+    />
+    <link
+      defer
+      rel="stylesheet"
+      type="text/css"
+      href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700|Roboto+Slab:100,300,400,500,700|Material+Icons&amp;display=swap"
+    />
+    <link
+      defer
+      rel="stylesheet"
+      href="/assets/css/jekyll-pygments-themes-github.css?591dab5a4e56573bf4ef7fd332894c99"
+      media=""
+      id="highlight_theme_light"
+    />
+    <link
+      rel="shortcut icon"
+      href="data:image/svg+xml,&lt;svg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%20100%20100%22&gt;&lt;text%20y=%22.9em%22%20font-size=%2290%22&gt;%E2%9A%9B%EF%B8%8F&lt;/text&gt;&lt;/svg&gt;"
+    />
+    <link
+      rel="stylesheet"
+      href="/assets/css/main.css?d41d8cd98f00b204e9800998ecf8427e"
+    />
+    <link
+      rel="canonical"
+      href="https://israel-adewuyi.github.io/blog/2021/distill/"
+    />
+    <script src="/assets/js/theme.js?9a0c749ec5240d9cda97bc72359a72c0"></script>
+    <link
+      defer
+      rel="stylesheet"
+      href="/assets/css/jekyll-pygments-themes-native.css?5847e5ed4a4568527aa6cfab446049ca"
+      media="none"
+      id="highlight_theme_dark"
+    />
+    <script>
+      initTheme();
+    </script>
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"
+      integrity="sha256-ZgMyDAIYDYGxbcpJcfUnYwNevG/xi9OHKaR/8GK+jWc="
+      crossorigin="anonymous"
+    ></script>
+    <script
+      defer
+      src="/assets/js/zoom.js?85ddb88934d28b74e78031fd54cf8308"
+    ></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"
+      integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4="
+      crossorigin="anonymous"
+    ></script>
+    <script type="text/javascript">
+      window.MathJax = { tex: { tags: "ams" } };
+    </script>
+    <script
+      defer
+      type="text/javascript"
+      id="MathJax-script"
+      src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js"
+      integrity="sha256-MASABpB4tYktI2Oitl4t+78w/lyA+D7b/s9GEP0JOGI="
+      crossorigin="anonymous"
+    ></script>
+    <script
+      defer
+      src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"
+      crossorigin="anonymous"
+    ></script>
+    <script src="/assets/js/distillpub/template.v2.js"></script>
+    <script src="/assets/js/distillpub/transforms.v2.js"></script>
+    <script src="/assets/js/distillpub/overrides.js"></script>
+    <style type="text/css">
+      .fake-img {
+        background: #bbb;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        box-shadow: 0 0 4px rgba(0, 0, 0, 0.1);
+        margin-bottom: 12px;
+      }
+      .fake-img p {
+        font-family: monospace;
+        color: white;
+        text-align: left;
+        margin: 12px 0;
+        text-align: center;
+        font-size: 16px;
+      }
+      figcaption {
+        font-size: 16px; /* Caption size */
+        color: #ffffff; /* White caption text */
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+        text-align: center;
+      }
+      .highlight {
+        background-color: #617d9b;
+        padding: 10px;
+        border-left: 4px solid #3498db;
+        margin-bottom: 15px;
+      }
+      .sub-nav {
+        margin-left: 20px;
+        font-size: 0.9em;
+      }
+      .sub-sub-nav {
+        margin-left: 40px;
+        font-size: 0.9em;
+      }
+      pre {
+        padding: 0px;
+        padding-left: 0px;
+        padding-right: 1px;
+        border-radius: 5px;
+        overflow-x: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <d-front-matter>
+      <script async type="text/json">
+        {
+          "title": "Replicating GraphRAG paper",
+          "description": "a replication of 'From Local to Global'",
+          "published": "May 1, 2025",
+          "authors": [
+            {
+              "author": "Israel Adewuyi",
+              "authorURL": "https://israel-adewuyi.github.io/",
+              "affiliations": [
+                {
+                  "name": "Innopolis University",
+                  "url": "https://innopolis.university/"
+                }
+              ]
+            }
+          ],
+          "katex": {
+            "delimiters": [
+              {
+                "left": "$",
+                "right": "$",
+                "display": false
+              },
+              {
+                "left": "$$",
+                "right": "$$",
+                "display": true
+              }
+            ]
+          }
+        }
+      </script>
+    </d-front-matter>
+    <header>
+      <nav
+        id="navbar"
+        class="navbar navbar-light navbar-expand-sm fixed-top"
+        role="navigation"
+      >
+        <div class="container">
+          <a class="navbar-brand title font-weight-lighter" href="/">
+            <span class="font-weight-bold">Israel</span> Adewuyi
+          </a>
+          <button
+            class="navbar-toggler collapsed ml-auto"
+            type="button"
+            data-toggle="collapse"
+            data-target="#navbarNav"
+            aria-controls="navbarNav"
+            aria-expanded="false"
+            aria-label="Toggle navigation"
+          >
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar top-bar"></span>
+            <span class="icon-bar middle-bar"></span>
+            <span class="icon-bar bottom-bar"></span>
+          </button>
+          <div class="collapse navbar-collapse text-right" id="navbarNav">
+            <ul class="navbar-nav ml-auto flex-nowrap">
+              <li class="nav-item"><a class="nav-link" href="/">About </a></li>
+              <li class="nav-item active">
+                <a class="nav-link" href="/blog/"
+                  >nanotransformer-circuits
+                  <span class="sr-only">(current)</span>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="/publications/">publications </a>
+              </li>
+              <!-- <li class="nav-item">
+                <a class="nav-link" href="/projects/">projects </a>
+              </li> -->
+              <!-- <li class="nav-item">
+                <a class="nav-link" href="/repositories/">repositories </a>
+              </li> -->
+              <!-- <li class="nav-item"><a class="nav-link" href="/cv/">cv </a></li> -->
+              <!-- <li class="nav-item">
+                <a class="nav-link" href="/teaching/">teaching </a>
+              </li> -->
+              <!-- <li class="nav-item">
+                <a class="nav-link" href="/people/">people </a>
+              </li> -->
+              <!-- <li class="nav-item dropdown active">
+                <a
+                  class="nav-link dropdown-toggle"
+                  href="#"
+                  id="navbarDropdown"
+                  role="button"
+                  data-toggle="dropdown"
+                  aria-haspopup="true"
+                  aria-expanded="false"
+                  >submenus <span class="sr-only">(current)</span>
+                </a>
+                <div
+                  class="dropdown-menu dropdown-menu-right"
+                  aria-labelledby="navbarDropdown"
+                >
+                  <a class="dropdown-item" href="/publications/"
+                    >publications</a
+                  >
+                  <div class="dropdown-divider"></div>
+                  <a class="dropdown-item" href="/projects/">projects</a>
+                  <div class="dropdown-divider"></div>
+                  <a class="dropdown-item active" href="/blog/">blog</a>
+                </div>
+              </li> -->
+              <!-- <li class="nav-item">
+                <button
+                  id="search-toggle"
+                  title="Search"
+                  onclick="openSearchModal()"
+                >
+                  <span class="nav-link"
+                    >ctrl k <i class="ti ti-search"></i
+                  ></span>
+                </button>
+              </li> -->
+              <li class="toggle-container">
+                <button id="light-toggle" title="Change theme">
+                  <i class="ti ti-sun-moon" id="light-toggle-system"></i>
+                  <i class="ti ti-moon-filled" id="light-toggle-dark"></i>
+                  <i class="ti ti-sun-filled" id="light-toggle-light"></i>
+                </button>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </nav>
+      <progress id="progress" value="0">
+        <div class="progress-container"><span class="progress-bar"></span></div>
+      </progress>
+    </header>
+    <div class="post distill">
+      <d-title>
+        <h1>Solving NER with RL</h1>
+        <p>something nice to say here, please</p>
+      </d-title>
+      <d-byline></d-byline>
+      <d-article>
+        <d-contents>
+          <nav class="l-text figcaption">
+            <h3>Contents</h3>
+            <div><a href="#intro">Introduction</a></div>
+            <div><a href="#background">Background</a></div>
+            <nav class="sub-nav">
+              <div><a href="#why-llms-suck">Why LLMs suck at NER</a></div>
+              <div>
+                <a href="#summary">Summary of relevant approaches approaches</a>
+              </div>
+            </nav>
+            <div><a href="#method">Method</a></div>
+            <nav class="sub-nav">
+              <div><a href="#dataset">Dataset</a></div>
+              <div><a href="#prompt">Prompt</a></div>
+              <nav class="sub-sub-nav">
+                <div><a href="#task-desc">Task description</a></div>
+                <div><a href="#few-shot">Few shot demonstrations</a></div>
+                <div><a href="#output-format">LLM Output Format</a></div>
+              </nav>
+              <div><a href="#reward">Reward design</a></div>
+            </nav>
+            <div><a href="#experiment">Experiment</a></div>
+            <div><a href="#results">Results</a></div>
+            <!-- <div><a href="#footnotes">Code Blocks</a></div>
+            <div><a href="#interactive-plots">Interactive Plots</a></div>
+            <div><a href="#layouts">Layouts</a></div>
+            <div><a href="#other-typography">Other Typography?</a></div> -->
+          </nav>
+        </d-contents>
+        <h2 id="intro">Introduction</h2>
+        <p>
+          Large Language Models (LLMs) built on the Transformer architecture
+          <d-cite key="attentionneed"></d-cite>
+          have transformed Natural Language Processing (NLP), achieving SOTA
+          results in tasks such as text generation, translation, and sentiment
+          analysis
+          <d-cite key="radford2019language"></d-cite>. At the same time, Named
+          Entity Recognition (NER)—the process of identifying and classifying
+          proper names and other key terms in text—remains a core NLP task in
+          applications like information extraction, question answering, machine
+          translation
+          <d-cite key="keraghel2024recentadvancesnamedentity"></d-cite>.
+        </p>
+        <p>
+          Recently, researchers have revisited Reinforcement Learning (RL) as a
+          means of adapting LLMs to specific objectives without full retraining.
+          By defining reward functions that is specific to the domain in
+          question, RL fine‑tuning can elicit desired behaviors from a
+          pre‑trained model. This approach has already shown promise in areas
+          such as competitive mathematics
+          <d-cite
+            key="chen-etal-2025-learning, shao2024deepseekmathpushinglimitsmathematical, openai2025competitiveprogramminglargereasoning"
+          ></d-cite>
+          and code generation
+          <d-cite
+            key="gehring2025rlef, wang2025enhancingcodellmsreinforcement"
+          ></d-cite
+          >.
+        </p>
+        <p>
+          In this work, we bring these threads together. We fine‑tune a 1.5B
+          Qwen2.5
+          <d-cite key="qwen2025qwen25technicalreport"></d-cite> model on the
+          CoNLL2003 NER
+          <d-cite key="sang2003introductionconll2003sharedtask"></d-cite>, using
+          carefully designed reward signals to guide entity recognition
+          performance. Our results demonstrate that, even with modest model
+          size, RL‑based adaptation can rival much larger architectures such as
+          GPT‑3, highlighting the potential of reinforcement learning for
+          structured NLP tasks.
+        </p>
+
+        <h2 id="background">Background</h2>
+        <h3 id="why-llms-suck">Why LLMs suck at NER</h3>
+        <p>
+          LLMs like Qwen2.5-1.5
+          <d-cite key="qwen2025qwen25technicalreport"></d-cite>, Llama
+          <d-cite key="grattafiori2024llama3herdmodels"></d-cite>, Gemini
+          <d-cite key="geminiteam2024geminifamilyhighlycapable"></d-cite>, e.t.c
+          are pretrained on massive datasets with the objective being to predict
+          the next token in a sequence. This makes them great for tasks like
+          text generation but less effective for NER.
+        </p>
+        <p>Why?</p>
+        <p>
+          NER requires a different approach, as it involves identifying and
+          classifying entities within text. This is a token-level task, where
+          where the goal is to label specific tokens accurately.
+        </p>
+        <p>
+          Imed et. al.
+          <d-cite key="keraghel2024recentadvancesnamedentity"></d-cite>
+          provided a comprehensive overview of the advances in the field of NER,
+          but most relevant approaches to this work, which are summarized below,
+          are approaches that leverage LLMs to solve NER task.
+        </p>
+        <h3 id="summary">Summary of relevant approaches</h3>
+        <!-- <p>
+          Most supervised methods treat NER task as a sequence labelling task
+          which involves representing each token/string as an high-dimensional
+          vector and then assigning a label to each token. This is done using a
+          combination of recurrent neural networks (RNNs) and conditional random
+          fields (CRFs) [8]. The RNNs are used to capture the sequential nature
+          of the data, while the CRFs are used to model the dependencies between
+          labels. This approach has been successful in many cases, but it
+          requires a large amount of annotated data and can be computationally
+          expensive.
+        </p>
+        <h3 id="unsupervised">Summary of unsupervised approaches</h3> -->
+        <p>
+          The core idea in most of the works listed below involves some
+          combination of In Context Learning (ICL), Supervised Finetuning (SFT).
+          In the ICL paradigm,LLMs learn new tasks by including a few examples
+          in the prompt which makes them flexible for new tasks without extra
+          training while in the SFT paradigm, an LLM is further trained on
+          specific, labeled data to make it better at that task.
+          <d-footnote
+            >It's akin to fine-tuning a general tool for a specific
+            job.</d-footnote
+          >
+        </p>
+        <p>
+          GPT-NER
+          <d-cite key="wang2023gptnernamedentityrecognition"></d-cite>
+          reformulated the sequence labelling task as a text generation task.
+          The LLM (GPT3) is prompted to output the entities in the given text
+          surrounded by special tokens with ICL and SFT improving the
+          performance. The authors also extended their approach by finetuning a
+          specialized NER model for retrieval of few-shot examples.
+        </p>
+        <p>
+          PromptNER <d-cite key="Ashok2023PromptNERPF"></d-cite> kept the task
+          as a sequence labelling task
+          <d-footnote
+            >By prompting the LLM to list the entities in the text, given a
+            predefined list of entities</d-footnote
+          >, but they introduced Chain-of-Thought (CoT) prompting, as well as
+          giving an explanation of all the predefined entity types.
+        </p>
+        <p>
+          GoLLIE <d-cite key="Sainz2023GoLLIEAG"></d-cite> and InstructUIE
+          <d-cite key="Wang2023InstructUIEMI"></d-cite> both proposed
+          instruction tuning frameworks for information retrieval using LLMs.
+          GoLLIE fine-tunes an LLM to follow annotation guidelines, with tasks
+          and guidelines represented in a code-based format. In contrast,
+          InstructUIE employs natural language instructions within a unified
+          text-to-text framework to model various IE tasks.
+        </p>
+
+        <p>
+          Works like LTNER also used GPT-3 but they coupled this with context
+          learning and the authors were able to get up to 91%, which is
+          competitive with supervised finetuning methods.
+        </p>
+
+        <p>
+          RL offers a compelling alternative by aligning an LLM’s behavior with
+          NER-specific objectives through carefully designed rewards, unlocking
+          latent capabilities without extensive retraining. Our project uses RL
+          to fine-tune a 1.5B-parameter Qwen2.5 model on the CoNLL-2003 dataset,
+          a standard benchmark for NER that includes entities like Person,
+          Location, Organization, and Miscellaneous. By shaping rewards to
+          prioritize correct entity identification and structured output
+          formatting, we aim to make a small LLM perform competitively with much
+          larger models.
+        </p>
+
+        <h2 id="method">Method</h2>
+        <h3 id="dataset">Dataset</h3>
+        <p>
+          The CoNLL2003 introduced by Eric et. al.
+          <d-cite key="sang2003introductionconll2003sharedtask"></d-cite> has
+          four types of named entities: Location (LOC), Organization (ORG),
+          Person (PER), and Miscellaneous (MISC). We leveraged the preprocessed
+          NER dataset by Li et al. (2019a)
+          <d-cite key="li2022unifiedmrcframeworknamed"></d-cite>. A sample from
+          the dev set which is downloadable from their
+          <a href="https://github.com/ShannonAI/mrc-for-flat-nested-ner"
+            >github repo</a
+          >
+          looks like
+        </p>
+
+        <pre>
+  {
+    "context": "4 - Goran Ivanisevic ( Croatia ) beat Scott Draper ( Australia ) 6-7 ( 1-7 ) 6-3 6-4 6-4",
+    "end_position": [
+      3,
+      9
+    ],
+    "entity_label": "PER",
+    "impossible": false,
+    "qas_id": "174.2",
+    "query": "person entities are named persons or family.",
+    "span_position": [
+      "2;3",
+      "8;9"
+    ],
+    "start_position": [
+      2,
+      8
+    ]
+  }
+</pre
+        >
+        <p>
+          <code>context</code> - the input text from which entities are to be
+          extracted. <br />
+          <code>entity_label</code> - the entity to be extracted <br />
+          <code>query</code> - an explanation of the entity to be extracted.
+        </p>
+        <!-- <hr style="width: 50%; margin: 0 auto" />
+          -->
+        <br />
+        <h3 id="prompt">Prompt</h3>
+        <pre>
+  """
+  A conversation between User and Assistant. The User provides a string of words. 
+  The task of the Assistant is to identify all the {entity_label} entities 
+  in the given string and return the entities surrounded by an entity tag.
+  DESCRIPTION: {query}
+  
+  The reasoning process should be enclosed within &lt;think&gt; &lt;/think&gt; tags, 
+  and the relevant words should be enclosed within &lt;entity&gt; &lt;/entity&gt; tags.
+  i.e &lt;think&gt; reasoning process here &lt;/think&gt; &lt;entity&gt; comma separated 
+  list of words that are locations&lt;/entity&gt;
+  
+  {example}
+  
+  User: {context}
+  Assistant: 
+  """
+              </pre
+        >
+        <p>
+          <code>entity_label</code> - the entity to be extracted <br />
+          <code>query</code> - an explanation of the entity to be extracted -
+          same as in the dataset. <br />
+          <code>example</code> - few shot examples for the current
+          <code>entity_label</code> <br />
+          <code>context</code> - the input text from which entities are to be
+          extracted. <br />
+        </p>
+        <p>
+          The prompt construction method used in this work relies heavily and
+          closely mirrors the fantastic work done by in the research literature.
+          An overview of the relevant parts are provided below:
+        </p>
+
+        <p style="margin-bottom: 24px"></p>
+        <h4 id="task-desc">Task description</h4>
+        <p>
+          Following the preprocessing step done by Eric et. al.
+          <d-cite key="sang2003introductionconll2003sharedtask"></d-cite> and
+          Wang et al.
+          <d-cite key="wang2023gptnernamedentityrecognition"></d-cite>, for each
+          input sentence, N prompts are constructed where N is the number of
+          entities in the dataset <d-footnote>N = 4 for CoNLL2003</d-footnote>.
+          Following the PromptNER
+          <d-cite key="Ashok2023PromptNERPF"></d-cite> paper, we also added to
+          the prompt, the explanation for each entity that the LLM is meant to
+          extract for the current input text.
+        </p>
+        <br />
+        <br />
+        <h4 id="few-shot">Few shot demonstrations</h4>
+        <p>
+          To generate in-context examples, we randomly sample 2 sentences from
+          the dev set of the CoNLL dataset for each entity type Deepseek-V3-base
+          is prompted to solve the task and the result is manually inspected and
+          included in the prompt, without any modifications.
+        </p>
+
+        <br />
+        <h4 id="output-format">LLM Output Format.</h4>
+        <p>
+          As visible from the prompt template, the LLM is prompted to output the
+          CoT inside the think tag and then the list of entities in the entity
+          tag.
+        </p>
+        <p>
+          As an example, consider the following. The LLM is prompted to identify
+          the location entity, <code>LOC</code> in the following text:
+          <code
+            >Japan began the defence of their Asian Cup title with a lucky 2-1
+            win against Syria in a Group C championship match on Friday .</code
+          >
+          Results from Deepseek-V3-base :
+        </p>
+        <pre>
+  <code
+          >&lt;think&gt; </code> 1. **Japan**: This is a country in East Asia, which is a politically and geographically defined location. It fits the criteria for a LOCATION entity. 
+  2. **Asian Cup**: This refers to a football tournament, not a specific geographic or political location, so it does not qualify as a LOCATION entity. 
+  3. **Syria**: This is a country in the Middle East, which is a politically and geographically defined location. It fits the criteria for a LOCATION entity. 
+  4. **Group C**: This refers to a group in the tournament, not a geographic or political location, so it does not qualify as a LOCATION entity. 
+  5. The rest of the words ("began", "the", "defence", "of", "their", "title", "with", "a", "lucky", "2-1", "win", "against", "in", "a", "championship", "match", "on", "Friday") are not location names and do not fit the criteria. 
+  <code
+          >&lt;/think&gt; </code> 
+  <code
+          >&lt;entity&gt; </code>Japan, Syria<code
+          >&lt;/entity&gt; </code>
+          </pre>
+        <p style="margin-bottom: 24px"></p>
+        <h3 id="reward">RL and Reward Design</h3>
+        <p>
+          To guide the model to output things in the desired format, we utilize
+          GRPO
+          <d-cite key="shao2024deepseekmathpushinglimitsmathematical"></d-cite>
+          which discards the critic model which is meant to provide some
+          baseline for the advantage estimates. Instead, for each prompt, we
+          GRPO samples <code>m</code> outputs, which are referred to as
+          <strong>group</strong>
+          and the average outcome reward from the group serves as an estimate
+          for the baseline.
+        </p>
+        <p>
+          For each output in the group, four reward functions were designed to
+          provide signals to the policy model. The design of the reward function
+          follows the amazing work of Willccb on grpo for GSM8k.
+        </p>
+        <ul>
+          <li>
+            <strong>Soft Format Reward:</strong> Awards 0.5 if the output
+            follows the required format (<code
+              >&lt;think&gt;...&lt;/think&gt;
+              &lt;entity&gt;...&lt;/entity&gt;</code
+            >), ensuring structural consistency.
+          </li>
+          <li>
+            <strong>Correctness Reward:</strong> Gives 2.0 if the extracted
+            entities exactly match the ground truth, emphasizing accuracy.
+          </li>
+          <li>
+            <strong>Positive Entity Correctness Reward:</strong> Adds 0.5 for
+            each correctly identified entity, rewarding partial correctness.
+          </li>
+          <li>
+            <strong>Negative Entity Correctness Reward:</strong> Subtracts 0.5
+            for each incorrectly included entity, penalizing overprediction.
+          </li>
+        </ul>
+        <p>
+          These rewards work together to balance precision and recall,
+          encouraging the model to identify entities accurately while adhering
+          to the expected format. For example, if the model correctly identifies
+          “Japan, Syria” as Locations but includes an extra incorrect entity, it
+          receives a positive reward for the correct entities but a penalty for
+          the mistake.
+        </p>
+        <div class="highlight">
+          <p><strong>Example Reward Calculation:</strong></p>
+          <p>
+            Input: “Japan began the defence of their Asian Cup title with a
+            lucky 2-1 win against Syria.”
+          </p>
+          <p>
+            Ground Truth: <code>&lt;entity&gt;Japan, Syria&lt;/entity&gt;</code>
+          </p>
+          <p>
+            Model Output:
+            <code>&lt;entity&gt;Japan, Syria, Asian Cup&lt;/entity&gt;</code>
+          </p>
+          <ul>
+            <li>Soft Format: 0.5 (correct format)</li>
+            <li>Correctness: 0.0 (not an exact match)</li>
+            <li>Positive Entity: 1.0 (0.5 for Japan + 0.5 for Syria)</li>
+            <li>Negative Entity: -0.5 (penalty for Asian Cup)</li>
+          </ul>
+        </div>
+
+        <h2 id="experiment">Experiment</h2>
+        <p>
+          As stated earlier, Qwen2.5-1.5B was utilized in this experiment.
+          Huggingface provides an easy-to-use implementation of GRPO in the TRL
+          module. The model was also trained on 4 epochs. Relevant
+          hyperparameters are:
+        </p>
+        <pre>
+  training_args = GRPOConfig(
+    ...
+    learning_rate=5e-6,
+    adam_beta1 = 0.9,
+    adam_beta2 = 0.99,
+    weight_decay = 0.1,
+    warmup_ratio = 0.1,
+    lr_scheduler_type='cosine',
+    bf16=True,
+    per_device_train_batch_size=4,
+    num_generations=8,
+    max_prompt_length=2048,
+    max_completion_length=2048,
+    num_train_epochs=4,
+    save_strategy="epoch",
+    max_grad_norm=0.1,
+    report_to="wandb",
+    log_on_each_node=False,
+  )
+        </pre>
+        <p>More details can be found in the repository.</p>
+        <h2 id="results">Results</h2>
+        <h2>Closing thoughts</h2>
+        <h2>Acknowledgements</h2>
+        <h2>Citation information</h2>
+        <h2 id="background">Things to check</h2>
+
+        <ul>
+          <li>
+            Might provide some motivating examples for using LLMs, even the 1.5B
+            params to reason about the NER task.
+          </li>
+          <li>Papers that reference LLMs struggling with RL</li>
+          <li>
+            I am open-sourcing the code, model and the output logs of the model
+            during trainings
+          </li>
+          <li>query in prompt should be something more descriptive, mann</li>
+          <li>Filtering the train set might also be a good thing</li>
+        </ul>
+      </d-article>
+      <d-appendix>
+        <d-footnote-list></d-footnote-list> <d-citation-list></d-citation-list>
+      </d-appendix>
+      <d-bibliography src="/assets/bibliography/graphrag.bib"></d-bibliography>
+      <div id="giscus_thread" style="max-width: 930px; margin: 0 auto">
+        <script>
+          let giscusTheme = determineComputedTheme(),
+            giscusAttributes = {
+              src: "https://giscus.app/client.js",
+              "data-repo": "israel-adewuyi/israel-adewuyi.github.io",
+              "data-repo-id": "",
+              "data-category": "Comments",
+              "data-category-id": "",
+              "data-mapping": "title",
+              "data-strict": "1",
+              "data-reactions-enabled": "1",
+              "data-emit-metadata": "0",
+              "data-input-position": "bottom",
+              "data-theme": giscusTheme,
+              "data-lang": "en",
+              crossorigin: "anonymous",
+              async: "",
+            },
+            giscusScript = document.createElement("script");
+          Object.entries(giscusAttributes).forEach(([t, e]) =>
+            giscusScript.setAttribute(t, e)
+          ),
+            document.getElementById("giscus_thread").appendChild(giscusScript);
+        </script>
+        <noscript
+          >Please enable JavaScript to view the
+          <a
+            href="http://giscus.app/?ref_noscript"
+            rel="external nofollow noopener"
+            target="_blank"
+            >comments powered by giscus.</a
+          >
+        </noscript>
+      </div>
+    </div>
+    <footer class="fixed-bottom" role="contentinfo">
+      <div class="container mt-0">
+        © Copyright 2024 Israel Adewuyi. Powered by
+        <a
+          href="https://jekyllrb.com/"
+          target="_blank"
+          rel="external nofollow noopener"
+          >Jekyll</a
+        >
+        with
+        <a
+          href="https://github.com/alshedivat/al-folio"
+          rel="external nofollow noopener"
+          target="_blank"
+          >al-folio</a
+        >
+        theme. Hosted by
+        <a
+          href="https://pages.github.com/"
+          target="_blank"
+          rel="external nofollow noopener"
+          >GitHub Pages</a
+        >. Photos from
+        <a
+          href="https://unsplash.com"
+          target="_blank"
+          rel="external nofollow noopener"
+          >Unsplash</a
+        >.
+      </div>
+    </footer>
+    <script src="/assets/js/bootstrap.bundle.min.js"></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/mdbootstrap@4.20.0/js/mdb.min.js"
+      integrity="sha256-NdbiivsvWt7VYCt6hYNT3h/th9vSTL4EDWeGs5SN3DA="
+      crossorigin="anonymous"
+    ></script>
+    <script type="text/javascript">
+      function progressBarSetup() {
+        "max" in document.createElement("progress")
+          ? (initializeProgressElement(),
+            $(document).on("scroll", function () {
+              progressBar.attr({ value: getCurrentScrollPosition() });
+            }),
+            $(window).on("resize", initializeProgressElement))
+          : (resizeProgressBar(),
+            $(document).on("scroll", resizeProgressBar),
+            $(window).on("resize", resizeProgressBar));
+      }
+      function getCurrentScrollPosition() {
+        return $(window).scrollTop();
+      }
+      function initializeProgressElement() {
+        let e = $("#navbar").outerHeight(!0);
+        $("body").css({ "padding-top": e }),
+          $("progress-container").css({ "padding-top": e }),
+          progressBar.css({ top: e }),
+          progressBar.attr({
+            max: getDistanceToScroll(),
+            value: getCurrentScrollPosition(),
+          });
+      }
+      function getDistanceToScroll() {
+        return $(document).height() - $(window).height();
+      }
+      function resizeProgressBar() {
+        progressBar.css({ width: getWidthPercentage() + "%" });
+      }
+      function getWidthPercentage() {
+        return (getCurrentScrollPosition() / getDistanceToScroll()) * 100;
+      }
+      const progressBar = $("#progress");
+      window.onload = function () {
+        setTimeout(progressBarSetup, 50);
+      };
+    </script>
+    <script src="/assets/js/vanilla-back-to-top.min.js?f40d453793ff4f64e238e420181a1d17"></script>
+    <script>
+      addBackToTop();
+    </script>
+    <script
+      type="module"
+      src="/assets/js/search/ninja-keys.min.js?a3446f084dcaecc5f75aa1757d087dcf"
+    ></script>
+    <ninja-keys
+      hidebreadcrumbs
+      noautoloadmdicons
+      placeholder="Type to start searching"
+    ></ninja-keys>
+    <script>
+      let searchTheme = determineComputedTheme();
+      const ninjaKeys = document.querySelector("ninja-keys");
+      "dark" === searchTheme
+        ? ninjaKeys.classList.add("dark")
+        : ninjaKeys.classList.remove("dark");
+      const openSearchModal = () => {
+        const e = $("#navbarNav");
+        e.hasClass("show") && e.collapse("hide"), ninjaKeys.open();
+      };
+    </script>
+    <script>
+      const ninja = document.querySelector("ninja-keys");
+      ninja.data = [
+        {
+          id: "nav-about",
+          title: "about",
+          section: "Navigation",
+          handler: () => {
+            window.location.href = "/";
+          },
+        },
+        {
+          id: "nav-blog",
+          title: "blog",
+          description: "",
+          section: "Navigation",
+          handler: () => {
+            window.location.href = "/blog/";
+          },
+        },
+        {
+          id: "nav-publications",
+          title: "publications",
+          description:
+            "publications by categories in reversed chronological order. generated by jekyll-scholar.",
+          section: "Navigation",
+          handler: () => {
+            window.location.href = "/publications/";
+          },
+        },
+        {
+          id: "nav-projects",
+          title: "projects",
+          description: "A growing collection of your cool projects.",
+          section: "Navigation",
+          handler: () => {
+            window.location.href = "/projects/";
+          },
+        },
+        {
+          id: "nav-repositories",
+          title: "repositories",
+          description:
+            "Edit the `_data/repositories.yml` and change the `github_users` and `github_repos` lists to include your own GitHub profile and repositories.",
+          section: "Navigation",
+          handler: () => {
+            window.location.href = "/repositories/";
+          },
+        },
+        {
+          id: "nav-cv",
+          title: "cv",
+          description:
+            "This is a description of the page. You can modify it in '_pages/cv.md'. You can also change or remove the top pdf download button.",
+          section: "Navigation",
+          handler: () => {
+            window.location.href = "/cv/";
+          },
+        },
+        {
+          id: "nav-teaching",
+          title: "teaching",
+          description:
+            "Materials for courses you taught. Replace this text with your description.",
+          section: "Navigation",
+          handler: () => {
+            window.location.href = "/teaching/";
+          },
+        },
+        {
+          id: "nav-people",
+          title: "people",
+          description: "members of the lab or group",
+          section: "Navigation",
+          handler: () => {
+            window.location.href = "/people/";
+          },
+        },
+        {
+          id: "dropdown-publications",
+          title: "publications",
+          description: "",
+          section: "Dropdown",
+          handler: () => {
+            window.location.href = "";
+          },
+        },
+        {
+          id: "dropdown-projects",
+          title: "projects",
+          description: "",
+          section: "Dropdown",
+          handler: () => {
+            window.location.href = "";
+          },
+        },
+        {
+          id: "dropdown-blog",
+          title: "blog",
+          description: "",
+          section: "Dropdown",
+          handler: () => {
+            window.location.href = "/blog/";
+          },
+        },
+        {
+          id: "post-google-gemini-updates-flash-1-5-gemma-2-and-project-astra",
+          title:
+            'Google Gemini updates: Flash 1.5, Gemma 2 and Project Astra <svg width="1.2rem" height="1.2rem" top=".5rem" viewbox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><path d="M17 13.5v6H5v-12h6m3-3h6v6m0-6-9 9" class="icon_svg-stroke" stroke="#999" stroke-width="1.5" fill="none" fill-rule="evenodd" stroke-linecap="round" stroke-linejoin="round"></path></svg>',
+          description:
+            "We\u2019re sharing updates across our Gemini family of models and a glimpse of Project Astra, our vision for the future of AI assistants.",
+          section: "Posts",
+          handler: () => {
+            window.open(
+              "https://blog.google/technology/ai/google-gemini-update-flash-ai-assistant-io-2024/",
+              "_blank"
+            );
+          },
+        },
+        {
+          id: "post-a-post-with-tabs",
+          title: "a post with tabs",
+          description: "this is what included tabs in a post could look like",
+          section: "Posts",
+          handler: () => {
+            window.location.href = "/blog/2024/tabs/";
+          },
+        },
+        {
+          id: "post-a-post-with-typograms",
+          title: "a post with typograms",
+          description: "this is what included typograms code could look like",
+          section: "Posts",
+          handler: () => {
+            window.location.href = "/blog/2024/typograms/";
+          },
+        },
+        {
+          id: "post-a-post-that-can-be-cited",
+          title: "a post that can be cited",
+          description: "this is what a post that can be cited looks like",
+          section: "Posts",
+          handler: () => {
+            window.location.href = "/blog/2024/post-citation/";
+          },
+        },
+        {
+          id: "post-a-post-with-pseudo-code",
+          title: "a post with pseudo code",
+          description: "this is what included pseudo code could look like",
+          section: "Posts",
+          handler: () => {
+            window.location.href = "/blog/2024/pseudocode/";
+          },
+        },
+        {
+          id: "post-a-post-with-code-diff",
+          title: "a post with code diff",
+          description: "this is how you can display code diffs",
+          section: "Posts",
+          handler: () => {
+            window.location.href = "/blog/2024/code-diff/";
+          },
+        },
+        {
+          id: "post-a-post-with-advanced-image-components",
+          title: "a post with advanced image components",
+          description: "this is what advanced image components could look like",
+          section: "Posts",
+          handler: () => {
+            window.location.href = "/blog/2024/advanced-images/";
+          },
+        },
+        {
+          id: "post-a-post-with-vega-lite",
+          title: "a post with vega lite",
+          description: "this is what included vega lite code could look like",
+          section: "Posts",
+          handler: () => {
+            window.location.href = "/blog/2024/vega-lite/";
+          },
+        },
+        {
+          id: "post-a-post-with-geojson",
+          title: "a post with geojson",
+          description: "this is what included geojson code could look like",
+          section: "Posts",
+          handler: () => {
+            window.location.href = "/blog/2024/geojson-map/";
+          },
+        },
+        {
+          id: "post-a-post-with-echarts",
+          title: "a post with echarts",
+          description: "this is what included echarts code could look like",
+          section: "Posts",
+          handler: () => {
+            window.location.href = "/blog/2024/echarts/";
+          },
+        },
+        {
+          id: "post-a-post-with-chart-js",
+          title: "a post with chart.js",
+          description: "this is what included chart.js code could look like",
+          section: "Posts",
+          handler: () => {
+            window.location.href = "/blog/2024/chartjs/";
+          },
+        },
+        {
+          id: "post-a-post-with-tikzjax",
+          title: "a post with TikZJax",
+          description: "this is what included TikZ code could look like",
+          section: "Posts",
+          handler: () => {
+            window.location.href = "/blog/2023/tikzjax/";
+          },
+        },
+        {
+          id: "post-a-post-with-bibliography",
+          title: "a post with bibliography",
+          description: "an example of a blog post with bibliography",
+          section: "Posts",
+          handler: () => {
+            window.location.href = "/blog/2023/post-bibliography/";
+          },
+        },
+        {
+          id: "post-a-post-with-jupyter-notebook",
+          title: "a post with jupyter notebook",
+          description: "an example of a blog post with jupyter notebook",
+          section: "Posts",
+          handler: () => {
+            window.location.href = "/blog/2023/jupyter-notebook/";
+          },
+        },
+        {
+          id: "post-a-post-with-custom-blockquotes",
+          title: "a post with custom blockquotes",
+          description: "an example of a blog post with custom blockquotes",
+          section: "Posts",
+          handler: () => {
+            window.location.href = "/blog/2023/custom-blockquotes/";
+          },
+        },
+        {
+          id: "post-a-post-with-table-of-contents-on-a-sidebar",
+          title: "a post with table of contents on a sidebar",
+          description:
+            "an example of a blog post with table of contents on a sidebar",
+          section: "Posts",
+          handler: () => {
+            window.location.href = "/blog/2023/sidebar-table-of-contents/";
+          },
+        },
+        {
+          id: "post-a-post-with-audios",
+          title: "a post with audios",
+          description: "this is what included audios could look like",
+          section: "Posts",
+          handler: () => {
+            window.location.href = "/blog/2023/audios/";
+          },
+        },
+        {
+          id: "post-a-post-with-videos",
+          title: "a post with videos",
+          description: "this is what included videos could look like",
+          section: "Posts",
+          handler: () => {
+            window.location.href = "/blog/2023/videos/";
+          },
+        },
+        {
+          id: "post-displaying-beautiful-tables-with-bootstrap-tables",
+          title: "displaying beautiful tables with Bootstrap Tables",
+          description: "an example of how to use Bootstrap Tables",
+          section: "Posts",
+          handler: () => {
+            window.location.href = "/blog/2023/tables/";
+          },
+        },
+        {
+          id: "post-a-post-with-table-of-contents",
+          title: "a post with table of contents",
+          description: "an example of a blog post with table of contents",
+          section: "Posts",
+          handler: () => {
+            window.location.href = "/blog/2023/table-of-contents/";
+          },
+        },
+        {
+          id: "post-a-post-with-giscus-comments",
+          title: "a post with giscus comments",
+          description: "an example of a blog post with giscus comments",
+          section: "Posts",
+          handler: () => {
+            window.location.href = "/blog/2022/giscus-comments/";
+          },
+        },
+        {
+          id: "post-displaying-external-posts-on-your-al-folio-blog",
+          title:
+            'Displaying External Posts on Your al-folio Blog <svg width="1.2rem" height="1.2rem" top=".5rem" viewbox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><path d="M17 13.5v6H5v-12h6m3-3h6v6m0-6-9 9" class="icon_svg-stroke" stroke="#999" stroke-width="1.5" fill="none" fill-rule="evenodd" stroke-linecap="round" stroke-linejoin="round"></path></svg>',
+          description: "",
+          section: "Posts",
+          handler: () => {
+            window.open(
+              "https://medium.com/@al-folio/displaying-external-posts-on-your-al-folio-blog-b60a1d241a0a?source=rss-17feae71c3c4------2",
+              "_blank"
+            );
+          },
+        },
+        {
+          id: "post-a-post-with-redirect",
+          title: "a post with redirect",
+          description: "you can also redirect to assets like pdf",
+          section: "Posts",
+          handler: () => {
+            window.location.href = "/assets/pdf/example_pdf.pdf";
+          },
+        },
+        {
+          id: "post-a-post-with-diagrams",
+          title: "a post with diagrams",
+          description: "an example of a blog post with diagrams",
+          section: "Posts",
+          handler: () => {
+            window.location.href = "/blog/2021/diagrams/";
+          },
+        },
+        {
+          id: "post-a-distill-style-blog-post",
+          title: "a distill-style blog post",
+          description:
+            "an example of a distill-style blog post and main elements",
+          section: "Posts",
+          handler: () => {
+            window.location.href = "/blog/2021/distill/";
+          },
+        },
+        {
+          id: "post-a-post-with-twitter",
+          title: "a post with twitter",
+          description: "an example of a blog post with twitter",
+          section: "Posts",
+          handler: () => {
+            window.location.href = "/blog/2020/twitter/";
+          },
+        },
+        {
+          id: "post-a-post-with-disqus-comments",
+          title: "a post with disqus comments",
+          description: "an example of a blog post with disqus comments",
+          section: "Posts",
+          handler: () => {
+            window.location.href = "/blog/2015/disqus-comments/";
+          },
+        },
+        {
+          id: "post-a-post-with-math",
+          title: "a post with math",
+          description: "an example of a blog post with some math",
+          section: "Posts",
+          handler: () => {
+            window.location.href = "/blog/2015/math/";
+          },
+        },
+        {
+          id: "post-a-post-with-code",
+          title: "a post with code",
+          description: "an example of a blog post with some code",
+          section: "Posts",
+          handler: () => {
+            window.location.href = "/blog/2015/code/";
+          },
+        },
+        {
+          id: "post-a-post-with-images",
+          title: "a post with images",
+          description: "this is what included images could look like",
+          section: "Posts",
+          handler: () => {
+            window.location.href = "/blog/2015/images/";
+          },
+        },
+        {
+          id: "post-a-post-with-formatting-and-links",
+          title: "a post with formatting and links",
+          description: "march & april, looking forward to summer",
+          section: "Posts",
+          handler: () => {
+            window.location.href = "/blog/2015/formatting-and-links/";
+          },
+        },
+        {
+          id: "news-a-simple-inline-announcement",
+          title: "A simple inline announcement.",
+          description: "",
+          section: "News",
+        },
+        {
+          id: "news-a-long-announcement-with-details",
+          title: "A long announcement with details",
+          description: "",
+          section: "News",
+          handler: () => {
+            window.location.href = "/news/announcement_2/";
+          },
+        },
+        {
+          id: "news-a-simple-inline-announcement-with-markdown-emoji-sparkles-smile",
+          title:
+            'A simple inline announcement with Markdown emoji! <img class="emoji" title=":sparkles:" alt=":sparkles:" src="https://github.githubassets.com/images/icons/emoji/unicode/2728.png" height="20" width="20"> <img class="emoji" title=":smile:" alt=":smile:" src="https://github.githubassets.com/images/icons/emoji/unicode/1f604.png" height="20" width="20">',
+          description: "",
+          section: "News",
+        },
+        {
+          id: "projects-project-1",
+          title: "project 1",
+          description: "with background image",
+          section: "Projects",
+          handler: () => {
+            window.location.href = "/projects/1_project/";
+          },
+        },
+        {
+          id: "projects-project-2",
+          title: "project 2",
+          description: "a project with a background image and giscus comments",
+          section: "Projects",
+          handler: () => {
+            window.location.href = "/projects/2_project/";
+          },
+        },
+        {
+          id: "projects-project-3-with-very-long-name",
+          title: "project 3 with very long name",
+          description: "a project that redirects to another website",
+          section: "Projects",
+          handler: () => {
+            window.location.href = "/projects/3_project/";
+          },
+        },
+        {
+          id: "projects-project-4",
+          title: "project 4",
+          description: "another without an image",
+          section: "Projects",
+          handler: () => {
+            window.location.href = "/projects/4_project/";
+          },
+        },
+        {
+          id: "projects-project-5",
+          title: "project 5",
+          description: "a project with a background image",
+          section: "Projects",
+          handler: () => {
+            window.location.href = "/projects/5_project/";
+          },
+        },
+        {
+          id: "projects-project-6",
+          title: "project 6",
+          description: "a project with no image",
+          section: "Projects",
+          handler: () => {
+            window.location.href = "/projects/6_project/";
+          },
+        },
+        {
+          id: "projects-project-7",
+          title: "project 7",
+          description: "with background image",
+          section: "Projects",
+          handler: () => {
+            window.location.href = "/projects/7_project/";
+          },
+        },
+        {
+          id: "projects-project-8",
+          title: "project 8",
+          description:
+            "an other project with a background image and giscus comments",
+          section: "Projects",
+          handler: () => {
+            window.location.href = "/projects/8_project/";
+          },
+        },
+        {
+          id: "projects-project-9",
+          title: "project 9",
+          description: "another project with an image \ud83c\udf89",
+          section: "Projects",
+          handler: () => {
+            window.location.href = "/projects/9_project/";
+          },
+        },
+        {
+          id: "socials-email",
+          title: "Send email",
+          section: "Socials",
+          handler: () => {
+            window.open(
+              "mailto:%69%73%69%73%74%69%63%6B%7A@%67%6D%61%69%6C.%63%6F%6D",
+              "_blank"
+            );
+          },
+        },
+        {
+          id: "socials-google-scholar",
+          title: "Google Scholar",
+          section: "Socials",
+          handler: () => {
+            window.open(
+              "https://scholar.google.com/citations?user=qc6CJjYAAAAJ",
+              "_blank"
+            );
+          },
+        },
+        {
+          id: "socials-rss",
+          title: "RSS Feed",
+          section: "Socials",
+          handler: () => {
+            window.open("/feed.xml", "_blank");
+          },
+        },
+        {
+          id: "light-theme",
+          title: "Change theme to light",
+          description: "Change the theme of the site to Light",
+          section: "Theme",
+          handler: () => {
+            setThemeSetting("light");
+          },
+        },
+        {
+          id: "dark-theme",
+          title: "Change theme to dark",
+          description: "Change the theme of the site to Dark",
+          section: "Theme",
+          handler: () => {
+            setThemeSetting("dark");
+          },
+        },
+        {
+          id: "system-theme",
+          title: "Use system default theme",
+          description: "Change the theme of the site to System Default",
+          section: "Theme",
+          handler: () => {
+            setThemeSetting("system");
+          },
+        },
+      ];
+    </script>
+    <script src="/assets/js/shortcut-key.js?6f508d74becd347268a7f822bca7309d"></script>
+  </body>
+</html>
