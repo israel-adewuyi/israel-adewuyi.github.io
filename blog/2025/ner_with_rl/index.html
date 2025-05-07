@@ -12,7 +12,7 @@
     <meta name="author" content="Israel Adewuyi" />
     <meta
       name="description"
-      content="this blog details my attempt at replicating the graphrag paper as well as the decisions I made."
+      content="a preliminary report on solving NER with LLM"
     />
     <meta name="keywords" content="LLM, RAG, graphrag" />
     <link
@@ -148,8 +148,8 @@
     <d-front-matter>
       <script async type="text/json">
         {
-          "title": "Replicating GraphRAG paper",
-          "description": "a replication of 'From Local to Global'",
+          "title": "Reinforcement Learning Meets NER",
+          "description": "an attempt at solving Named Entity Recognition with RL training.",
           "published": "May 1, 2025",
           "authors": [
             {
@@ -281,7 +281,7 @@
     </header>
     <div class="post distill">
       <d-title>
-        <h1>[Draft] RL-NER</h1>
+        <h1>Reinforcement Learning Meets NER</h1>
         <p>an attempt at solving Named Entity Recognition with RL training.</p>
       </d-title>
       <d-byline></d-byline>
@@ -295,7 +295,7 @@
             <nav class="sub-nav">
               <div><a href="#why-llms-suck">Why LLMs suck at NER</a></div>
               <div>
-                <a href="#summary">Summary of relevant approaches approaches</a>
+                <a href="#summary">Summary of related approaches</a>
               </div>
             </nav>
             <div><a href="#method">Method</a></div>
@@ -311,6 +311,9 @@
             </nav>
             <div><a href="#experiment">Experiment</a></div>
             <div><a href="#results">Results</a></div>
+            <div><a href="#closing">Closing Thoughts</a></div>
+            <div><a href="#acknowledgement">Acknowledgements</a></div>
+            <div><a href="#citation">Citation Information</a></div>
             <!-- <div><a href="#footnotes">Code Blocks</a></div>
             <div><a href="#interactive-plots">Interactive Plots</a></div>
             <div><a href="#layouts">Layouts</a></div>
@@ -318,6 +321,12 @@
           </nav>
         </d-contents>
         <h2 id="karoche">TLDR</h2>
+        <p>
+          <i
+            >This work represents preliminary experimental reports, and should
+            be treated as such. See the closing thoughts for more details.</i
+          >
+        </p>
         <ul>
           <li>
             Via RL training, we achieved up to 7.3% increase in F1 score on a
@@ -332,6 +341,7 @@
             directions of research.
           </li>
         </ul>
+
         <p>
           Feel free to skip to Methods section or start from the introduction
           below.
@@ -354,10 +364,10 @@
         <p>
           Recently, researchers have revisited Reinforcement Learning (RL) as a
           means of adapting LLMs to specific objectives without full retraining.
-          By defining reward functions that is specific to the domain in
-          question, RL fine‑tuning can elicit desired behaviors from a
-          pre‑trained model. This approach has already shown promise in areas
-          such as competitive mathematics
+          By defining reward functions or training reward models that is
+          specific to the domain/task in question, RL fine‑tuning can elicit
+          desired behaviors from a pre‑trained model. This approach has already
+          shown promise in areas such as competitive mathematics
           <d-cite
             key="chen-etal-2025-learning, shao2024deepseekmathpushinglimitsmathematical, openai2025competitiveprogramminglargereasoning"
           ></d-cite>
@@ -395,7 +405,7 @@
         <p>
           NER requires a different approach, as it involves identifying and
           classifying entities within text. This is a token-level task, where
-          where the goal is to label specific tokens accurately.
+          the goal is to label specific tokens accurately.
         </p>
         <p>
           Imed et. al.
@@ -404,7 +414,7 @@
           but most relevant approaches to this work, which are summarized below,
           are approaches that leverage LLMs to solve NER task.
         </p>
-        <h3 id="summary">Summary of relevant approaches</h3>
+        <h3 id="summary">Summary of related approaches</h3>
         <!-- <p>
           Most supervised methods treat NER task as a sequence labelling task
           which involves representing each token/string as an high-dimensional
@@ -420,29 +430,30 @@
         <p>
           The core idea in most of the works listed below involves primarily
           prompt engineering
-          <d-note>
+          <d-footnote>
             Which is just a fancy way of saying almost all of them reformulated
             the task in some way that the LLM might be able to solve
-            easier.</d-note
+            easier.</d-footnote
           >
-          and some combination of In Context Learning (ICL), Supervised
+          and some combination of In Context Learning (ICL) and Supervised
           Finetuning (SFT). In the ICL paradigm, LLMs learn new tasks by being
-          shown a few examples in the prompt which makes them flexible for new
-          tasks without extra training while in the SFT paradigm, an LLM is
-          further trained on specific, labeled data to make it better at that
-          task.
+          shown a few examples (few-shot) in the prompt which makes them
+          flexible for new tasks without extra training while in the SFT
+          paradigm, an LLM is further trained on specific, labeled data to make
+          it better at the said task.
           <d-footnote
             >It's akin to fine-tuning a general tool for a specific
             job.</d-footnote
           >
         </p>
         <p>
-          GPT-NER
+          GPT-NER introduced by Wang et al
           <d-cite key="wang2023gptnernamedentityrecognition"></d-cite> and LTNER
+          introduced by Yan et al
           <d-cite key="Yan2024LTNERLL"></d-cite>
           reformulated the sequence labelling task as a text generation task by
           prompting the LLM to generate the input text with the identified
-          entities marked by special tokens. Both methods rely heavily on ICL
+          entities marked by special tokens. Both methods rely heavily on ICL.
           For retrieving these few-shot examples, GPT-NER investigated various
           strategies including embeddings derived from a fine-tuned NER model
           while LTNER utilizes vector-based retrieval from a knowledge base to
@@ -451,8 +462,10 @@
           hallucination.
         </p>
         <p>
-          PromptNER <d-cite key="Ashok2023PromptNERPF"></d-cite> kept the task
-          as a sequence labelling task
+          PromptNER introduced by Ashok and Lipton<d-cite
+            key="Ashok2023PromptNERPF"
+          ></d-cite>
+          kept the task as a sequence labelling task
           <d-footnote
             >By prompting the LLM to list the entities in the text, given a
             predefined list of entities</d-footnote
@@ -460,7 +473,8 @@
           giving an explanation of all the predefined entity types.
         </p>
         <p>
-          GoLLIE <d-cite key="Sainz2023GoLLIEAG"></d-cite> and InstructUIE
+          GoLLIE introduced in <d-cite key="Sainz2023GoLLIEAG"></d-cite> and
+          InstructUIE introduced in
           <d-cite key="Wang2023InstructUIEMI"></d-cite> both proposed
           instruction tuning frameworks for information retrieval using LLMs.
           GoLLIE fine-tunes an LLM to follow annotation guidelines, with tasks
@@ -474,6 +488,64 @@
           sequence labelling task into a code generation task to leverage the
           code generation capabilities of LLMs.
         </p>
+        <table style="border: 1px solid black">
+          <thead>
+            <tr>
+              <th>Method</th>
+              <th>Approach</th>
+              <th>Model size</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>GPT-NER</td>
+              <td>ICL</td>
+              <td>Text-davinci-003</td>
+            </tr>
+            <tr>
+              <td>LTNER</td>
+              <td>ICL</td>
+              <td>GPT-3.5-turbo</td>
+            </tr>
+            <tr>
+              <td>PROMPT-NER</td>
+              <td>ICL</td>
+              <td>GPT4</td>
+            </tr>
+            <tr>
+              <td>CodeIE</td>
+              <td>ICL</td>
+              <td>Code-davinci-002</td>
+            </tr>
+            <tr>
+              <td>Code4UIE</td>
+              <td>ICL</td>
+              <td>Text-davinci-003</td>
+            </tr>
+            <tr>
+              <td>GPT-NER</td>
+              <td>ICL + SFT</td>
+              <td>Text-davinci-003</td>
+            </tr>
+
+            <tr>
+              <td>GoLLIE</td>
+              <td>SFT</td>
+              <td>Code-LLaMA 34B</td>
+            </tr>
+
+            <tr>
+              <td>InstructUIE</td>
+              <td>SFT</td>
+              <td>Flan-T5-11B</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- { name: "OURS\n(Qwen2.5-1.5B)", size: "1.5B", highlight: true }, { name:
+        "InstructUIE\n(Flan-T5-11B)", size: "11B", highlight: false }, { name:
+        "LTNER\n(GPT3.5-Turbo)", size: "175B", highlight: false }, { name:
+        "PromptNER\n(GPT4)", size: "175B", highlight: false }, -->
 
         <h2 id="method">Method</h2>
         <h3 id="dataset">Dataset</h3>
@@ -617,8 +689,8 @@
           GRPO
           <d-cite key="shao2024deepseekmathpushinglimitsmathematical"></d-cite>
           which discards the critic model which is meant to provide some
-          baseline for the advantage estimates. Instead, for each prompt, we
-          GRPO samples <code>m</code> outputs, which are referred to as
+          baseline for the advantage estimates. Instead, for each prompt, GRPO
+          samples <code>m</code> outputs, which are referred to as
           <strong>group</strong>
           and the average outcome reward from the group serves as an estimate
           for the baseline.
@@ -654,12 +726,11 @@
           </li>
         </ul>
         <p>
-          These rewards work together to balance precision and recall,
-          encouraging the model to identify entities accurately while adhering
-          to the expected format. For example, if the model correctly identifies
-          “Japan, Syria” as Locations but includes an extra incorrect entity, it
-          receives a positive reward for the correct entities but a penalty for
-          the mistake.
+          These rewards work together to encourage the model to identify
+          entities accurately while adhering to the expected format. For
+          example, if the model correctly identifies “Japan, Syria” as Locations
+          but includes an extra incorrect entity, it receives a positive reward
+          for the correct entities but a penalty for the mistake.
         </p>
         <div class="highlight">
           <p><strong>Example Reward Calculation:</strong></p>
@@ -688,12 +759,17 @@
           <a href="https://huggingface.co/Qwen/Qwen2-1.5B-Instruct"
             >Qwen2-1.5B-Instruct</a
           >
-          was utilized in this experiment. Huggingface provides an easy-to-use
-          implementation of GRPO in the
+          was utilized in this experiment.
           <a href="https://huggingface.co/docs/trl/main/en/index"
             >TRL library</a
           >
-          . The model was also trained on 4 epochs on
+          provided by HuggingFace, alongsides modifications to
+          <a
+            href="https://gist.github.com/willccbb/4676755236bb08cab5f4e54a0475d6fb"
+            >Willccb's grpo demo</a
+          >
+          repository, were used to construct a training and eval pipeline. The
+          model was also trained on 4 epochs on
           <strong>2 Nvidia A100</strong> GPUs. Relevant hyperparameters are:
         </p>
         <pre>
@@ -719,6 +795,12 @@
         </pre>
         <p>More details can be found in the repository.</p>
         <h2 id="results">Results</h2>
+        <p>
+          The first chart below shows the F1 score of the fine-tuned model in
+          comparison with other methods described in the
+          <a href="#summary">relevant works section</a> , while the second chart
+          compares the model sizes across all the methods.
+        </p>
         <div style="max-width: 800px; margin: auto">
           <canvas id="resultsChart" width="800" height="400"></canvas>
         </div>
@@ -743,7 +825,7 @@
           </li>
         </ul>
 
-        <h2>Closing thoughts</h2>
+        <h2 id="closing">Closing thoughts</h2>
         <p>
           This work explored, albeit, in a limited scope, how much RL training
           can improve the performance of LLMs on NER task and the results show
@@ -764,37 +846,62 @@
         <p>
           Future work would investigate other NER datasets (in other domains),
           how much performance is lost or retained in other tasks/benchmarks of
-          interest, as well as how small can the models be to get competitive
-          performance, especially in real world applications, where the tradeoff
-          of efficiency and correctness is often the focal point.
+          interest, different structures to reward model as well as how small
+          can the models be to get competitive performance, especially in real
+          world applications, where the tradeoff of efficiency and correctness
+          is often the focal point.
         </p>
         <p>
           It would also be interesting to do Interpretability on these models.
           What about the model changes when it's RL trained
         </p>
-        <h2>Acknowledgements</h2>
+        <h2 id="acknowledgement">Acknowledgements</h2>
         <p>
           Gratitude goes to the Institute of Software Engineering at Innopolis
-          university, led by Professor Vladmir Ivanov for providing compute. I
-          am also grateful to Ilnur Khadiev for helping out with fixing
-          GPU-related issues every so often.
+          university, led by
+          <a
+            href="https://scholar.google.com/citations?hl=en&user=16AyxX0AAAAJ&view_op=list_works&sortby=pubdate"
+            >Professor Vladmir Ivanov</a
+          >
+          for providing compute. I am also grateful to the following persons:
         </p>
-        <h2>Citation information</h2>
-        <h2 id="background">Things to check</h2>
-
         <ul>
           <li>
-            Might provide some motivating examples for using LLMs, even the 1.5B
-            params to reason about the NER task.
+            Ilnur Khadiev for helping out with fixing GPU-related issues every
+            so often.
           </li>
+          <li>
+            Nursultan Abdullaev for providing feedback on an initial draft.
+          </li>
+        </ul>
+        <h2 id="citation">Citation information</h2>
+        <p>Cite as:</p>
+        <div class="highlight">
+          Israel, Adewuyi. (May, 2025). Reinforcement Learning meets NER
+          https://israel-adewuyi.github.io/blog/2025/ner_with_rl/.
+        </div>
+        or
+        <pre>
 
+  @article{israel2025ner_rl,
+    title   = "Reinforcement Learning Meets NER",
+    author  = "Israel, Adewuyi",
+    journal = "israel-adewuyi.github.io",
+    year    = "2025",
+    month   = "May",
+    url     = "https://israel-adewuyi.github.io/blog/2025/ner_with_rl/"
+  }
+        </pre>
+        <!-- <h2 id="background">Things to check</h2>
+
+        <ul>
           <li>
             I am open-sourcing the code, model and the output logs of the model
             during trainings
           </li>
 
           <li>Filtering the train set might also be a good thing</li>
-        </ul>
+        </ul> -->
       </d-article>
       <d-appendix>
         <d-footnote-list></d-footnote-list> <d-citation-list></d-citation-list>
@@ -915,11 +1022,16 @@
             title: {
               display: true,
               text: "F1 Scores on CoNLL 2003 Dataset",
+              font: {
+                size: 20,
+              },
             },
           },
           scales: {
             y: {
-              beginAtZero: true,
+              beginAtZero: false, // This disables starting from zero
+              min: 80, // Set the minimum value for the y-axis
+              max: 95, // Set the maximum value for the y-axis
               title: {
                 display: true,
                 text: "F1 Score",
@@ -1011,6 +1123,9 @@
             title: {
               display: true,
               text: "Model Sizes (in Parameters)",
+              font: {
+                size: 20,
+              },
             },
             tooltip: {
               callbacks: {
