@@ -310,7 +310,21 @@
               <div><a href="#reward">RL and Reward design</a></div>
             </nav>
             <div><a href="#experiment">Experiment</a></div>
-            <div><a href="#results">Results</a></div>
+            <nav class="sub-nav">
+              <div><a href="#eval">Evaluation</a></div>
+            </nav>
+            <div><a href="#results">Results / Charts</a></div>
+            <nav class="sub-nav">
+              <div>
+                <a href="#chart1">F1 score comparison across approaches</a>
+              </div>
+              <div><a href="#chart2">Model sizes comparison</a></div>
+              <div>
+                <a href="#chart3"
+                  >F1 score comparison across epochs and base model</a
+                >
+              </div>
+            </nav>
             <div><a href="#closing">Closing Thoughts</a></div>
             <div><a href="#acknowledgement">Acknowledgements</a></div>
             <div><a href="#citation">Citation Information</a></div>
@@ -794,16 +808,40 @@
   )
         </pre>
         <p>More details can be found in the repository.</p>
-        <h2 id="results">Results</h2>
+        <h3 id="eval">Evaluation</h3>
+        <p>F1 score is reported for the RL-trained model.</p>
+        <ul>
+          <li>
+            To compare with other methods, the best F1 score evaluation across 4
+            epochs is reported.
+          </li>
+          <li>VLLM was used for sampling from the transformers.</li>
+          <li>
+            To ensure robustness, F1 score across 16 generations are averaged
+            and reported, both in comparison to other methods and in comparison
+            across epochs.
+          </li>
+          <li>
+            To evaluate the RL-trained model,
+            <a href="#few-shot">few shot examples</a> were included in the
+            prompt.
+          </li>
+        </ul>
+        <h2 id="results">Results / Charts</h2>
+        <h3 id="chart1">F1 score comparison across approaches</h3>
         <p>
-          The first chart below shows the F1 score of the fine-tuned model in
+          The chart below shows the F1 score of the fine-tuned model in
           comparison with other methods described in the
-          <a href="#summary">relevant works section</a> , while the second chart
-          compares the model sizes across all the methods.
+          <a href="#summary">relevant works section</a>.
         </p>
         <div style="max-width: 800px; margin: auto">
           <canvas id="resultsChart" width="800" height="400"></canvas>
         </div>
+        <h3 id="chart2">Model sizes comparison</h3>
+        <p>
+          The chart below compares the model sizes across all the methods listed
+          above
+        </p>
         <div style="max-width: 900px; margin: auto">
           <canvas id="modelSizeChart" width="800" height="400"></canvas>
         </div>
@@ -824,7 +862,15 @@
             1.7T parameters. So 175 is also conservative.
           </li>
         </ul>
-
+        <h3 id="chart3">F1 score comparison across epochs</h3>
+        <p>
+          The chart below shows the result of evaluating a saved checkpoint from
+          each epoch as well as the base Qwen1.5B model with few-shot examples
+          or without.
+        </p>
+        <div style="max-width: 900px; margin: auto">
+          <canvas id="baseModelChart" width="800" height="400"></canvas>
+        </div>
         <h2 id="closing">Closing thoughts</h2>
         <p>
           This work explored, albeit, in a limited scope, how much RL training
@@ -1169,6 +1215,73 @@
         .getElementById("modelSizeChart")
         .getContext("2d");
       new Chart(size_ctx, size_config);
+    </script>
+    <script>
+      const model_labels = [
+        "Base model without few-shot",
+        "Base model with few shot",
+        "Epoch 1",
+        "Epoch 2",
+        "Epoch 3",
+        "Epoch 4",
+      ];
+
+      const model_data = {
+        labels: model_labels,
+        datasets: [
+          {
+            label: "F1 Score",
+            data: [48.7, 73.22, 86.49, 87.8, 88.13, 88.1],
+            backgroundColor: model_labels.map((label) =>
+              label === "Epoch 3" || label === "Epoch 4"
+                ? "rgba(75, 192, 192, 0.8)" // Highlight Epoch 3 and 4
+                : "rgba(200, 200, 200, 0.6)"
+            ),
+            borderColor: model_labels.map((label) =>
+              label === "Epoch 3" || label === "Epoch 4"
+                ? "rgb(75, 192, 192)"
+                : "rgb(150, 150, 150)"
+            ),
+            borderWidth: 1,
+          },
+        ],
+      };
+
+      const model_config = {
+        type: "bar",
+        data: model_data,
+        options: {
+          responsive: true,
+          plugins: {
+            legend: {
+              display: false, // Optional: Hide legend since only one dataset
+            },
+            title: {
+              display: true,
+              text: "Model Performance Across Training Stages",
+              font: {
+                size: 20,
+              },
+            },
+          },
+          scales: {
+            y: {
+              beginAtZero: false,
+              min: 40, // Adjusted minimum for clarity
+              max: 90, // Adjusted maximum to accommodate highest value
+              title: {
+                display: true,
+                text: "F1 Score",
+              },
+            },
+          },
+        },
+      };
+
+      const model_ctx = document
+        .getElementById("baseModelChart")
+        .getContext("2d");
+      new Chart(model_ctx, model_config);
     </script>
     <script
       src="https://cdn.jsdelivr.net/npm/mdbootstrap@4.20.0/js/mdb.min.js"
