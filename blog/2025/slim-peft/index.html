@@ -8,16 +8,13 @@
       content="width=device-width, initial-scale=1, shrink-to-fit=no"
     />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <title>blog | Israel Adewuyi</title>
+    <title>Attention sink | Israel Adewuyi</title>
     <meta name="author" content="Israel Adewuyi" />
     <meta
       name="description"
-      content="A simple, whitespace theme for academics. Based on [*folio](https://github.com/bogoli/-folio) design. "
+      content="this blog details my attempt at replicating the graphrag paper as well as the decisions I made."
     />
-    <meta
-      name="keywords"
-      content="jekyll, jekyll-theme, academic-website, portfolio-website"
-    />
+    <meta name="keywords" content="LLM, RAG, graphrag" />
     <link
       rel="stylesheet"
       href="/assets/css/bootstrap.min.css?a4b3f509e79c54a512b890d73235ef04"
@@ -54,7 +51,10 @@
       rel="stylesheet"
       href="/assets/css/main.css?d41d8cd98f00b204e9800998ecf8427e"
     />
-    <link rel="canonical" href="https://israel-adewuyi.github.io/blog/" />
+    <link
+      rel="canonical"
+      href="https://israel-adewuyi.github.io/blog/2021/distill/"
+    />
     <script src="/assets/js/theme.js?9a0c749ec5240d9cda97bc72359a72c0"></script>
     <link
       defer
@@ -66,8 +66,135 @@
     <script>
       initTheme();
     </script>
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"
+      integrity="sha256-ZgMyDAIYDYGxbcpJcfUnYwNevG/xi9OHKaR/8GK+jWc="
+      crossorigin="anonymous"
+    ></script>
+    <script
+      defer
+      src="/assets/js/zoom.js?85ddb88934d28b74e78031fd54cf8308"
+    ></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"
+      integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4="
+      crossorigin="anonymous"
+    ></script>
+    <script type="text/javascript">
+      window.MathJax = {
+        tex: {
+          tags: "ams",
+          inlineMath: [["$", "$"]],
+          displayMath: [["$$", "$$"]],
+        },
+        chtml: {
+          adaptiveCSS: true,
+        },
+        svg: {
+          fontCache: "global",
+        },
+        options: {
+          enableMenu: false,
+        },
+        startup: {
+          ready() {
+            MathJax.startup.defaultReady();
+            // Apply color inheritance after MathJax loads
+            document.querySelectorAll("mjx-container").forEach((el) => {
+              el.style.color = "inherit";
+            });
+          },
+        },
+      };
+    </script>
+    <script
+      defer
+      type="text/javascript"
+      id="MathJax-script"
+      src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js"
+      integrity="sha256-MASABpB4tYktI2Oitl4t+78w/lyA+D7b/s9GEP0JOGI="
+      crossorigin="anonymous"
+    ></script>
+
+    <script
+      defer
+      src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"
+      crossorigin="anonymous"
+    ></script>
+    <script src="/assets/js/distillpub/template.v2.js"></script>
+    <script src="/assets/js/distillpub/transforms.v2.js"></script>
+    <script src="/assets/js/distillpub/overrides.js"></script>
+    <script src="https://cdn.plot.ly/plotly-3.0.1.min.js"></script>
+    <style>
+      .plot-container {
+        max-width: 600px;
+        margin: 20px auto;
+      }
+    </style>
+    <style type="text/css">
+      .fake-img {
+        background: #bbb;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        box-shadow: 0 0 4px rgba(0, 0, 0, 0.1);
+        margin-bottom: 12px;
+      }
+      .fake-img p {
+        font-family: monospace;
+        color: white;
+        text-align: left;
+        margin: 12px 0;
+        text-align: center;
+        font-size: 16px;
+      }
+      figcaption {
+        font-size: 16px; /* Caption size */
+        color: #ffffff; /* White caption text */
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+        text-align: center;
+      }
+      .sub-nav {
+        margin-left: 20px;
+        font-size: 0.9em;
+      }
+    </style>
   </head>
-  <body class="fixed-top-nav">
+  <body>
+    <d-front-matter>
+      <script async type="text/json">
+        {
+          "title": "Attention sink",
+          "description": "more evidence",
+          "published": "July 23, 2025",
+          "authors": [
+            {
+              "author": "Israel Adewuyi",
+              "authorURL": "https://israel-adewuyi.github.io/",
+              "affiliations": [
+                {
+                  "name": "Innopolis University",
+                  "url": "https://innopolis.university/"
+                }
+              ]
+            }
+          ],
+          "katex": {
+            "delimiters": [
+              {
+                "left": "$",
+                "right": "$",
+                "display": false
+              },
+              {
+                "left": "$$",
+                "right": "$$",
+                "display": true
+              }
+            ]
+          }
+        }
+      </script>
+    </d-front-matter>
     <header>
       <nav
         id="navbar"
@@ -140,8 +267,8 @@
                   <div class="dropdown-divider"></div>
                   <a class="dropdown-item active" href="/blog/">blog</a>
                 </div>
-              </li>
-              <li class="nav-item">
+              </li> -->
+              <!-- <li class="nav-item">
                 <button
                   id="search-toggle"
                   title="Search"
@@ -167,175 +294,561 @@
         <div class="progress-container"><span class="progress-bar"></span></div>
       </progress>
     </header>
-    <div class="container mt-5" role="main">
-      <div class="post">
-        <div class="header-bar">
-          <h1>nanotransformer-circuits</h1>
-          <h2>Sharing experimental results, paper replication and thoughts.</h2>
-        </div>
-        <!-- <div class="tag-category-list">
-          <ul class="p-0 m-0">
-            <li>
-              <i class="fa-solid fa-hashtag fa-sm"></i>
-              <a href="/blog/tag/formatting">saes</a>
-            </li>
-            <p>•</p>
-            <li>
-              <i class="fa-solid fa-hashtag fa-sm"></i>
-              <a href="/blog/tag/images">models-editing</a>
-            </li>
-            <p>•</p>
-            <li>
-              <i class="fa-solid fa-hashtag fa-sm"></i>
-              <a href="/blog/tag/links">circuits</a>
-            </li>
-            <p>•</p>
-            <li>
-              <i class="fa-solid fa-hashtag fa-sm"></i>
-              <a href="/blog/tag/math">math</a>
-            </li>
-            <p>•</p>
-            <li>
-              <i class="fa-solid fa-hashtag fa-sm"></i>
-              <a href="/blog/tag/math">LLM</a>
-            </li>
-            <p>•</p>
-            <li>
-              <i class="fa-solid fa-hashtag fa-sm"></i>
-              <a href="/blog/tag/math">rag</a>
-            </li>
-            <p>•</p>
-             <li>
-              <i class="fa-solid fa-hashtag fa-sm"></i>
-              <a href="/blog/tag/code">code</a>
-            </li> 
-         <p>•</p> 
-        <li>
-              <i class="fa-solid fa-hashtag fa-sm"></i>
-              <a href="/blog/tag/blockquotes">blockquotes</a>
-            </li> 
-         <p>•</p> 
-        <li>
-              <i class="fa-solid fa-tag fa-sm"></i>
-              <a href="/blog/category/external-services">external-services</a>
-            </li> 
-         </ul>
-        </div> -->
-
-        <!-- <br /> -->
-        <!-- <div class="container featured-posts">
-          <div class="row row-cols-2">
-            <div class="col mb-4">
-              <a href="/blog/2021/distill/">
-                <div class="card hoverable">
-                  <div class="row g-0">
-                    <div class="col-md-12">
-                      <div class="card-body">
-                        <div class="float-right">
-                          <i class="fa-solid fa-thumbtack fa-xs"></i>
-                        </div>
-                        <h3 class="card-title text-lowercase">
-                          a distill-style blog post
-                        </h3>
-                        <p class="card-text">
-                          an example of a distill-style blog post and main
-                          elements
-                        </p>
-                        <p class="post-meta">
-                          8 min read   ·  
-                          <a href="/blog/2021">
-                            <i class="fa-solid fa-calendar fa-sm"></i> 2021
-                          </a>
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </a>
+    <div class="post distill">
+      <d-title>
+        <h1>Slightly More Parameter Efficient Finetuning</h1>
+        <p>fill</p>
+      </d-title>
+      <d-byline></d-byline>
+      <d-article>
+        <d-contents>
+          <nav class="l-text figcaption">
+            <h3>Contents</h3>
+            <div><a href="#intro">Introduction</a></div>
+            <div><a href="#background">Background </a></div>
+            <nav class="sub-nav">
+              <div><a href="#notation">Notation</a></div>
+              <div><a href="#US">Update Sparsity</a></div>
+              <div><a href="#mask_training">Training with mask</a></div>
+            </nav>
+            <div>
+              <a href="#fisher_mask">Fisher Mask Works</a>
             </div>
-          </div>
-        </div> -->
-        <!-- <hr /> -->
-        <ul class="post-list">
-          <!-- <li>
-            <h3>
-              <a
-                class="post-title"
-                href="/blog/2024/replicating-refusal/"
-                target="_blank"
-                rel="external nofollow noopener"
-                >Replicating Refusal: A Mechanistic Interpretability Case
-                Study</a
-              >
-            </h3>
-          </li> -->
+            <div>
+              <a href="#rand_mask">The Surprise: Random Masks Also Work</a>
+            </div>
+            <!-- <nav class="sub-nav">
+              <div><a href="#induction_input">Inputs</a></div>
+              <div><a href="#induction_metric">Metric</a></div>
+              <div>
+                <a href="#induction_identify">Identifying induction heads</a>
+              </div>
+              <div><a href="#induction_result">Results</a></div>
+            </nav> -->
+            <!-- <div>
+              <a href="#what_if">If the induction input isn't present?</a>
+            </div>
+            <nav class="sub-nav">
+              <div><a href="#normal_input">Inputs</a></div>
+              <div>
+                <a href="#normal_res">Results</a>
+              </div>
+            </nav>
+            <div><a href="#closing">Closing thoughts</a></div> -->
+          </nav>
+        </d-contents>
+        <h2 id="intro">Introduction</h2>
+        <p>
+          Reinforcement learning fine-tuning (RLVR, RLAIF) is a new axis of
+          scale for increased performance of Large Language Models (LLMs), with
+          labs scaling compute for RL to levels on par with pretraining. Recent
+          works have also attempted to shed light on the how and why RL really
+          works
+          <d-cite
+            key="shao2025spuriousrewardsrethinkingtraining, wen2025reinforcementlearningverifiablerewards, yue2025doesreinforcementlearningreally, mukherjee2025reinforcementlearningfinetunessmall, zhu2025pathtakenrlvrprovably"
+          ></d-cite
+          >.
+        </p>
+        <p>
+          Mukherjee et al. (2025)
+          <d-cite
+            key="mukherjee2025reinforcementlearningfinetunessmall"
+          ></d-cite>
+          showed that RLVR finetunes a sparse subnetwork in LLMs, as little as
+          5-30% of parameters. With the goal of efficiency in mind, we ask the
+          question,
+          <strong
+            >if most parameters don't change during training, can we identify
+            which ones matter <em>before</em> training begins, and train only
+            those?</strong
+          >
+        </p>
+        <p>
+          We set out to answer this using gradient-based parameter importance
+          measures. We expected that sophisticated methods like Fisher
+          Information <d-cite key="Kirkpatrick_2017"></d-cite> would be
+          necessary to identify the "special" parameters that matter for
+          learning. <strong>We were wrong.</strong>
+        </p>
+
+        <p>
+          In this post, we present preliminary findings showing that
+          <strong>multiple random parameter selection</strong> can match full
+          fine-tuning performance when training only ~1% of parameters. This
+          suggests pretrained models may contain not just one winning ticket but
+          potentially many and we are calling this the
+          <strong>Multiple Ticket Hypothesis</strong>. If this holds at scale,
+          it could fundamentally change how we think about parameter efficiency
+          in RL fine-tuning.
+        </p>
+
+        <p>
+          This report details on going work on a small scale and the main reason
+          for sharing is that we think the temporary findings warrants
+          discussion and are interesting enough to be shared with the wider
+          community.
+          <d-footnote
+            >An auxilliary reason is to solicit for compute resources to scale
+            the experiments up.</d-footnote
+          >
+        </p>
+
+        <h3>tl,dr of results</h3>
+        <ul>
           <li>
-            <h3>
-              <a
-                class="post-title"
-                href="/blog/2024/replicating-graphrag/"
-                target="_blank"
-                rel="external nofollow noopener"
-              >
-                Replicating GraphRAG paper</a
-              >
-              <p class="post-meta">15 min read   ·   Nov 8, 2024</p>
-            </h3>
+            Random parameter selection at 99% sparsity can match full parameter
+            fine-tuning performance. This suggests pretrained models contain
+            multiple viable subnetworks (the "Multiple Ticket Hypothesis")
           </li>
-          <!-- <li>
-            <h3>
-              <a
-                class="post-title"
-                href="/blog/2025/attention_to_flash_attention/"
-                target="_blank"
-                rel="external nofollow noopener"
-              >
-                Flash attention [Draft]
-              </a>
-              <p class="post-meta">7 min read   ·   March 8, 2025</p>
-            </h3>
-          </li> -->
           <li>
-            <h3>
-              <a
-                class="post-title"
-                href="/blog/2025/ner_with_rl/"
-                target="_blank"
-                rel="external nofollow noopener"
-              >
-                Reinforcement Learning Meets NER
-              </a>
-              <p class="post-meta">16 min read   ·   May 7, 2025</p>
-            </h3>
+            Fisher Information masks also work, validating gradient-based
+            parameter identification, but surprisingly offer no clear advantage
+            over random selection.
           </li>
           <li>
-            <h3>
-              <a
-                class="post-title"
-                href="/blog/2025/attn_sink_evidence/"
-                target="_blank"
-                rel="external nofollow noopener"
-              >
-                Attention Sink in LLMs
-              </a>
-              <p class="post-meta">10 min read   ·   July 23, 2025</p>
-            </h3>
-          </li>
-          <li>
-            <h3>
-              <a
-                class="post-title"
-                href="/blog/2025/slim-peft/"
-                target="_blank"
-                rel="external nofollow noopener"
-              >
-                Beyond the Lottery Ticket: Multiple Winning Subnetworks in
-                Pretrained LLMs
-              </a>
-              <p class="post-meta">30 min read   ·   December 12, 2025</p>
-            </h3>
+            Different mask types require different optimal learning rates -
+            random masks tolerate higher LRs, Fisher masks require lower LRs
           </li>
         </ul>
+
+        <h2 id="background">Background</h2>
+        <h3 id="notation">Notation</h3>
+        <p style="color: var(--text-color)">
+          Let $\theta$ denote the parameters of an LLM. We use $\theta^{(t)}$ to
+          represent the model parameters at training step $t$, with
+          $\theta^{(0)}$ denoting the initial pretrained model weights and
+          $\theta_i$ to denote the i-th parameter.
+          <br />
+          During an RLVR run, gradients at step t, $g^{(t)}$, are computed via
+          backpropagation, $$g^{(t)} = \nabla_\theta
+          J_{\text{GRPO}}(\theta^{(t)})$$
+        </p>
+
+        <h3>General Experimental Setup</h3>
+        <p>
+          In this report, all experiments are carried out on
+          <a href="https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct"
+            >Qwen2.5-0.5B-Instruct</a
+          >. We trained via GRPO on
+          <a href="https://x.com/kalomaze">Kalomaze</a>'s Alphabetsort env. We
+          also use AdamW optimizer for all RLVR runs. This work was also built
+          on <a href="https://www.primeintellect.ai/">Prime-Intellect</a>'s
+          <a href="https://github.com/PrimeIntellect-ai/prime-rl"
+            >RL training library</a
+          >.
+        </p>
+        <p>
+          <strong>Evaluation</strong> For evaluation, we also use the same
+          Alphabetsort env, selecting 512 samples, seeded to 2001.
+        </p>
+
+        <h3>Extracting sparse subnetworks</h3>
+        <p>
+          Our initial intuition:<br />
+          <strong
+            >Imagine a pretrained LLM with only 2 parameters, p1 and p2. If only
+            one parameter is changed at the end of a training phase with some
+            optimization function $\phi$, say p1, it must mean that p1 is more
+            important than p2 at satisfying $\phi$ is on the training set.
+          </strong>
+          <br /><br />
+          The question now is, how do we identify which parameters are most
+          important for some training data D?
+        </p>
+        <h2 id="fisher_mask">Fisher Mask Works</h2>
+        <p>
+          To identify which parameters are most important for a given task, we
+          follow the approach laid out by Kirkpatrick et. al.,
+          <d-cite key="Kirkpatrick_2017"></d-cite>. The authors estimated the
+          importance of some weights to a task by approximating the Fisher
+          information matrix of the model parameters.
+        </p>
+        <p>
+          We also approximate the Fisher matrix F
+          <d-footnote
+            >A justification for this is provided in the paper, but to
+            reiterate, the core intuition here is that the magnitude of $F_i$ is
+            correlated to how important parameter $\theta_i$ is to task
+            represented by D.</d-footnote
+          >
+          on a large batch of dataset for all the parameters of the model. $$F_i
+          \approx \frac{1}{N} \sum_{n=1}^{N} \left( \frac{\partial \log
+          p(x_n|\theta^{(0)})}{\partial \theta_i} \right)^2$$ where $x_n \sim
+          \text{dataset D}$ <br />
+          In practise, we sample a large batch of data, run a forward pass, a
+          backward pass and $$F_i = \theta_i.\text{grad}^2$$
+        </p>
+        <p>
+          We can then threshold F by taking the top <code class="">x%</code> of
+          parameters we are interested in, setting these to True and all else to
+          False and thus creating a binary mask $\text{MASK}_t \in \{0, 1\}^N$
+          over all parameters.
+        </p>
+        <h4 id="mask_training">Masked Training</h4>
+        <p>
+          During training with a mask, we modify the gradient update step to
+          only affect the masked parameters: $$\tilde{g}^{(t)} = g^{(t)} \odot
+          \text{MASK}^{(t)}$$ $$\theta^{(t+1)} = \theta^{(t)} - \eta_t \cdot
+          \mathcal{U}(\tilde{g}^{(t)}, \theta^{(t)})$$ where $\odot$ denotes
+          element-wise multiplication, $\eta_t$ is the learning rate at step
+          $t$, and $\mathcal{U}$ represents the optimizer's update rule (e.g.,
+          AdamW). This ensures that only the selected subnetwork is updated
+          while the full model is still used for forward passes.
+        </p>
+        <p>
+          In practise and for efficiency gains, we simply store the optimizer
+          states for the subnetwork only.
+        </p>
+        <h4>Result 1</h4>
+        <p>
+          We approximate $F$ using a batch of 1024 samples. We then created two
+          masks, one at 99% sparsity i.e update ~4,940,000 elements out of ~494M
+          and another at 99.9% sparsity i.e update 494, 000 elements. We compare
+          the eval results, as well as the training dynamics in
+          <a href="#fft_vs_fisher">Figure 1</a>
+        </p>
+        <p>
+          We use a learning rate of 1e-6 for the full finetuning run, 5e-6 for
+          the 99% fisher mask and 1e-5 for the 99.9% fisher mask run.
+        </p>
+        <figure id="fft_vs_fisher">
+          <img
+            src="/assets/img/rl_subnet_1/fft_fisher.png"
+            alt="train and eval dynamics"
+          />
+          <figcaption>
+            Figure 1: Metrics comparison between a full finetune run and sparse
+            training runs
+          </figcaption>
+        </figure>
+        <p>
+          This confirms our initial hypothesis that indeed, parameter-importance
+          identification might be a way to pickout which subnetworks allow us
+          get comparable levels of performance with the full finetuning.
+        </p>
+
+        <h2 id="rand_mask">The Surprise: Random Masks Also Work</h2>
+        <p>
+          Having validated the initial intuition, we wanted to establish a
+          baseline for comparison and investigated random parameter selection.We
+          generated random masks at 99% sparsity by uniform sampling parameters
+          to update.
+        </p>
+        <h3>Generating Random Masks</h3>
+        <p>
+          The implementation is pretty straightforward: We seed a random number
+          generator and select ~(100 - x)% of parameters uniformly at random
+        </p>
+        <p>
+          We used three different seeds,
+          <code class="language-plaintext">0</code>,
+          <code class="language-plaintext">2001</code> and
+          <code class="language-plaintext">42</code> to get different masks and
+          ran an RL run with these random masks. The results in
+          <a href="#fft_vs_random">Figure 2</a> are at $10^{-4}$, $5 \cdot
+          10^{-5}$ and $5 \cdot 10^{-5}$ respectively.
+        </p>
+        <pre>
+rng = np.random.default_rng(seed=42)
+for name, param in model.state_dict().items():
+    if param is None:
+        mask_dict[name] = None
+        continue
+
+    temp_tensor = torch.zeros_like(param, dtype=torch.bool)
+    num_to_generate = int(param.numel() * keep_ratio)
+    indices = rng.choice(param.numel(), size=num_to_generate, replace=False)
+    temp_tensor.view(-1)[indices] = True
+    active += num_to_generate
+    mask_dict[name] = temp_tensor
+        </pre>
+        <h3>Surprising Results</h3>
+        <p>
+          <a href="#fft_vs_random">Figure 2</a> surprisingly shows that random
+          parameter selection can match full fine-tuning performance. This
+          finding challenges our initial assumption that some sophisticated
+          parameter identification method would be necessary.
+        </p>
+        <figure id="fft_vs_random">
+          <img
+            src="/assets/img/rl_subnet_1/fft_vs_random.png"
+            alt="comparison of fft and random mask runs"
+          />
+          <figcaption>
+            Figure 2: Comparison of full fine-tuning (FFT) and random mask
+            training. With appropriate learning rate tuning, random masks match
+            or exceed full fine-tuning performance.
+          </figcaption>
+        </figure>
+        <h3>The learning rate puzzle</h3>
+        <p>
+          They key to making random masks and even the fisher mask work is
+          finding the right learning rate. We swept over multiple learning rates
+          to better understand this relationship and presents our findings in
+          Figures <a href="#hyperparam1">3</a> and <a href="#hyperparam2">4.</a>
+        </p>
+        <p>
+          Random masks perform best at higher lr, compared to full full
+          finetuning and fisher masks. THis isn't dissimilar to Thinkymachine's
+          work on lora.
+        </p>
+
+        <figure id="hyperparam1">
+          <img
+            src="/assets/img/rl_subnet_1/eval_scores_step_150.png"
+            alt="Hyperparameter sweep on learning rate for the random mask at 150"
+          />
+          <figcaption>
+            Figure 3: Hyperparameter sweep on learning rate for the random mask
+            at Step 150
+          </figcaption>
+        </figure>
+
+        <figure id="hyperparam2">
+          <img
+            src="/assets/img/rl_subnet_1/eval_scores_step_300.png"
+            alt="Hyperparameter sweep on learning rate for the random mask at 300"
+          />
+          <figcaption>
+            Figure 4: Hyperparameter sweep on learning rate for the random mask
+            at Step 300
+          </figcaption>
+        </figure>
+        <h3>Why Different Learning Rates?</h3>
+        <p>
+          We hypothesize that this learning rate difference paints interesting
+          picture about the objective we are optimizing for and the training
+          dynamics, with respect to the parameters of the model. Some of our
+          hypotheses are:
+        </p>
+        <ul>
+          <li>
+            <strong
+              >Fisher masks identify parameters already near optima:</strong
+            >
+            The Fisher Information Matrix identifies parameters with high
+            curvature which could be interpreted to be that those parameters are
+            sensitive to changes. These parameters may already be close to their
+            optimal values for the task, requiring only small adjustments (hence
+            lower learning rates).
+          </li>
+          <li>
+            <strong
+              >Random masks require more exploration or wiggling around:</strong
+            >
+            Random parameters are likely further from their optimal values on
+            average, requiring larger updates to find good solutions (hence
+            higher learning rates).
+          </li>
+          <li>
+            <strong>Different regions of the loss landscape:</strong> Fisher
+            masks may operate in high-curvature regions where large steps cause
+            instability, while random masks may, on average, be in a region that
+            appears flat and large steps are relatively safer.
+          </li>
+        </ul>
+        <h3>Do Different Masks Select the Same Parameters?</h3>
+
+        <p>
+          A natural question: are the random masks accidentally selecting the
+          same parameters that Fisher masks identify? To answer this, we compute
+          the Jaccard similarity between different masks, defined as $$ J(A, B)
+          = \frac{|A \cap B|}{|A \cup B|} $$
+        </p>
+        <figure id="jaccard">
+          <!-- <img src="/assets/img/rl_subnet_1/jaccard.png" alt="jaccard sim" /> -->
+          <img
+            src="/assets/img/rl_subnet_1/jaccard.png"
+            alt="jaccard sim"
+            style="transform: scale(0.7)"
+          />
+          <figcaption>
+            Figure 5: Jaccard overlap between the Random masks at 99% sparsity
+            and the Fisher mask.
+          </figcaption>
+        </figure>
+        <p>
+          The Jaccard similarities are low (<a href="#jaccard">Fig. 5</a>)
+          ,typically around 0.5%, indicating that different masks select largely
+          non-overlapping sets of parameters, yet they all achieve comparable
+          performance. This is the key observation that leads to our Multiple
+          Ticket Hypothesis.
+        </p>
+
+        <h3>Implications: The Multiple Ticket Hypothesis</h3>
+        <!-- <p>
+          These results suggest something profound about pretrained language
+          models:
+          <strong
+            >they contain multiple viable sparse subnetworks, perhaps many of
+            them.</strong
+          >
+        </p> -->
+
+        <!-- <p>
+          The Lottery Ticket Hypothesis (Frankle & Carbin, 2019) proposed that
+          dense networks contain sparse subnetworks that can be trained to match
+          the full network's performance. They got the winning ticket by
+          iteratively training and pruning the weights of the model.
+        </p> -->
+        <!-- <p>
+          Our findings extend this: for sufficiently over-parameterized
+          pretrained models, there may not be just <em>one</em> winning ticket,
+          but potentially <em>many</em> winning tickets— so many that even
+          random selection is likely to find one.
+        </p> -->
+        <p>
+          The Lottery Ticket Hypothesis (Frankle & Carbin, 2019) proposed that
+          dense networks contain sparse subnetworks that can be trained to match
+          the full network's performance. The way they went about getting this
+          subnetwork (iteratively train and prune the model) would lead to a
+          single subnetwork.
+        </p>
+        <p>
+          Our findings extend this: For sufficiently over-parameterized
+          pretrained models, there may not be just <em>one</em> winning ticket,
+          but potentially <em>many</em> winning tickets — so many that even
+          random selection is likely to find one i.e
+          <em
+            >You can just <s>do things</s> select random parameters and
+            train.</em
+          >
+        </p>
+        <p>
+          This explains why Fisher Information masks offer no clear advantage
+          over random selection: both methods simply need to select
+          <em>some</em> viable subnetwork, and when many such subnetworks exist,
+          even random selection succeeds with appropriate hyperparameter tuning.
+        </p>
+
+        <h2>Caveats and Questions</h2>
+
+        <p>
+          These are preliminary results on a small model (Qwen2.5-0.5B) and
+          simple task (alphabet-sort). More questions and ideas to investigate
+          reveal themselves:
+        </p>
+
+        <ul>
+          <li>
+            Does this phenomenon hold for larger models and different (harder)
+            tasks like math, code gen, logical reasoning (or any task that we
+            might want to make the model superhuman at with RLVR)?
+            <d-footnote
+              >We suspect it would. It should also be straightforward to
+              investigate this and it would be pleasantly surprising if it
+              doesnt hold.</d-footnote
+            >
+          </li>
+          <li>
+            It would seem logical that the parameters being repurposed for task
+            A under a random mask training might be close to optimal for another
+            task B. How does this random mask training affects the RLVR's
+            ability to reduce catastrophic forgetting (compared to SFT) on some
+            other task it has been trained on?
+            <d-footnote
+              >We're inclined to think that it would in some non-trivial way
+              lead to poorer performance on some other previously trained-on
+              task B, but what sort of task B?
+            </d-footnote>
+          </li>
+          <li>
+            Some experiments (not recorded here) on even more extreme sparsity
+            level like 99.9% and 99.95% do not match the full performance. At
+            99.9% the max across steps was about 46% and even less for 99.95%.
+            What's the threshold here?
+            <d-footnote
+              >It's not obvious that more params will equal more performance for
+              the simple reason that using all the params is capped at some
+              level. But at what threshold do we start getting comparable
+              performances?</d-footnote
+            >
+          </li>
+          <li>
+            On training dynamics, we also observe different convergence rates.
+            From preliminary experiments, higher learning rates converge faster,
+            at smaller sparsities, but they also become unstable more frequently
+            than other runs as well.
+            <d-footnote
+              >The question to investigate here isn't clearly formulated here,
+              but it was still an interesting observation
+              nonetheless</d-footnote
+            >
+          </li>
+          <li>
+            Do random masks transfer across tasks, or are they task-specific?
+            <d-footnote
+              >We don't think they are task specific, but we don't also think
+              that the same mask would behave the same across the different
+              training tasks.</d-footnote
+            >
+          </li>
+          <li>
+            Why exactly do different masks require different optimal learning
+            rates? How do we reason across this in relation to optimization
+            theory specifically?
+          </li>
+        </ul>
+
+        <p>
+          Answering these questions requires significantly more compute than we
+          currently have access to. If you're interested in collaborating,
+          mentoring or have compute resources to contribute, please reach out!
+        </p>
+
+        <h2>Acknowledgements</h2>
+        <ol>
+          <li>
+            I am super grateful to Daniel and Andreas for sponsoring compute for
+            the initial experiments as well as asking really insightful
+            questions.
+          </li>
+          <li>
+            PrimeIntellect also cooked with the prime-rl library. It was
+            pleasant to hack around.
+          </li>
+        </ol>
+      </d-article>
+      <d-appendix>
+        <d-footnote-list></d-footnote-list> <d-citation-list></d-citation-list>
+      </d-appendix>
+      <d-bibliography
+        src="/assets/bibliography/rl_subnet_1.bib"
+      ></d-bibliography>
+      <div id="giscus_thread" style="max-width: 930px; margin: 0 auto">
+        <script>
+          let giscusTheme = determineComputedTheme(),
+            giscusAttributes = {
+              src: "https://giscus.app/client.js",
+              "data-repo": "israel-adewuyi/israel-adewuyi.github.io",
+              "data-repo-id": "",
+              "data-category": "Comments",
+              "data-category-id": "",
+              "data-mapping": "title",
+              "data-strict": "1",
+              "data-reactions-enabled": "1",
+              "data-emit-metadata": "0",
+              "data-input-position": "bottom",
+              "data-theme": giscusTheme,
+              "data-lang": "en",
+              crossorigin: "anonymous",
+              async: "",
+            },
+            giscusScript = document.createElement("script");
+          Object.entries(giscusAttributes).forEach(([t, e]) =>
+            giscusScript.setAttribute(t, e)
+          ),
+            document.getElementById("giscus_thread").appendChild(giscusScript);
+        </script>
+        <noscript
+          >Please enable JavaScript to view the
+          <a
+            href="http://giscus.app/?ref_noscript"
+            rel="external nofollow noopener"
+            target="_blank"
+            >comments powered by giscus.</a
+          >
+        </noscript>
       </div>
     </div>
     <footer class="fixed-bottom" role="contentinfo">
@@ -369,73 +882,10 @@
         >.
       </div>
     </footer>
-    <script
-      src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"
-      integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4="
-      crossorigin="anonymous"
-    ></script>
     <script src="/assets/js/bootstrap.bundle.min.js"></script>
     <script
       src="https://cdn.jsdelivr.net/npm/mdbootstrap@4.20.0/js/mdb.min.js"
       integrity="sha256-NdbiivsvWt7VYCt6hYNT3h/th9vSTL4EDWeGs5SN3DA="
-      crossorigin="anonymous"
-    ></script>
-    <script
-      defer
-      src="https://cdn.jsdelivr.net/npm/masonry-layout@4.2.2/dist/masonry.pkgd.min.js"
-      integrity="sha256-Nn1q/fx0H7SNLZMQ5Hw5JLaTRZp0yILA/FRexe19VdI="
-      crossorigin="anonymous"
-    ></script>
-    <script
-      defer
-      src="https://cdn.jsdelivr.net/npm/imagesloaded@5.0.0/imagesloaded.pkgd.min.js"
-      integrity="sha256-htrLFfZJ6v5udOG+3kNLINIKh2gvoKqwEhHYfTTMICc="
-      crossorigin="anonymous"
-    ></script>
-    <script defer src="/assets/js/masonry.js" type="text/javascript"></script>
-    <script
-      defer
-      src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"
-      integrity="sha256-ZgMyDAIYDYGxbcpJcfUnYwNevG/xi9OHKaR/8GK+jWc="
-      crossorigin="anonymous"
-    ></script>
-    <script
-      defer
-      src="/assets/js/zoom.js?85ddb88934d28b74e78031fd54cf8308"
-    ></script>
-    <script src="/assets/js/no_defer.js?2781658a0a2b13ed609542042a859126"></script>
-    <script
-      defer
-      src="/assets/js/common.js?e0514a05c5c95ac1a93a8dfd5249b92e"
-    ></script>
-    <script
-      defer
-      src="/assets/js/copy_code.js?12775fdf7f95e901d7119054556e495f"
-      type="text/javascript"
-    ></script>
-    <script
-      defer
-      src="/assets/js/jupyter_new_tab.js?d9f17b6adc2311cbabd747f4538bb15f"
-    ></script>
-    <script
-      async
-      src="https://d1bxh8uas1mnw7.cloudfront.net/assets/embed.js"
-    ></script>
-    <script async src="https://badge.dimensions.ai/badge.js"></script>
-    <script type="text/javascript">
-      window.MathJax = { tex: { tags: "ams" } };
-    </script>
-    <script
-      defer
-      type="text/javascript"
-      id="MathJax-script"
-      src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js"
-      integrity="sha256-MASABpB4tYktI2Oitl4t+78w/lyA+D7b/s9GEP0JOGI="
-      crossorigin="anonymous"
-    ></script>
-    <script
-      defer
-      src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"
       crossorigin="anonymous"
     ></script>
     <script type="text/javascript">
@@ -834,9 +1284,9 @@
         },
         {
           id: "post-a-distill-style-blog-post",
-          title: "nano-transformer-circuits",
+          title: "a distill-style blog post",
           description:
-            "a collection of research projects/paper implementations",
+            "an example of a distill-style blog post and main elements",
           section: "Posts",
           handler: () => {
             window.location.href = "/blog/2021/distill/";
