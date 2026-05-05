@@ -1,0 +1,412 @@
+﻿---
+layout: distill
+title: 'Attention sink'
+description: 'More evidence'
+date: 2025-07-23
+bibliography: attn_sink.bib
+---
+
+<d-contents>
+          <nav class="l-text figcaption">
+            <h3>Contents</h3>
+            <div><a href="#background">Intro</a></div>
+            <div>
+              <a href="#attn_doing">What is an attention head doing?</a>
+            </div>
+            <nav class="sub-nav">
+              <div><a href="#attn_intuition">Intuitive explanation</a></div>
+              <div><a href="#attn_concrete">More concretely</a></div>
+              <div><a href="#attn_further_q">Further questions</a></div>
+            </nav>
+            <div><a href="#induction_head">Induction Heads </a></div>
+            <div>
+              <a href="#induction_head_gpt2"
+                >Identifying induction heads in GPT2</a
+              >
+            </div>
+            <nav class="sub-nav">
+              <div><a href="#induction_input">Inputs</a></div>
+              <div><a href="#induction_metric">Metric</a></div>
+              <div>
+                <a href="#induction_identify">Identifying induction heads</a>
+              </div>
+              <div><a href="#induction_result">Results</a></div>
+            </nav>
+            <div>
+              <a href="#what_if">If the induction input isn't present?</a>
+            </div>
+            <nav class="sub-nav">
+              <div><a href="#normal_input">Inputs</a></div>
+              <div>
+                <a href="#normal_res">Results</a>
+              </div>
+            </nav>
+            <div><a href="#closing">Closing thoughts</a></div>
+          </nav>
+        </d-contents>
+        <h2 id="background">Intro</h2>
+        <p>
+          I read the induction heads paper
+          <d-cite key="olsson2022context"></d-cite> a while back, while taking
+          the ARENA course. The paper lays out a super interesting mechanistic
+          study for in-context learning and specifically examines induction head
+          in transformer language models.
+        </p>
+        <p>
+          While playing around with induction heads in GPT2, I thought to myself
+          that "What if the input to induction heads isn't present, what do the
+          induction heads pay attention to?" I thought this might be a good
+          question to investigate and after a quick literature search, I
+          stumbled on the attention sink paper and a bunch of other works that
+          made fantastic attempts at answering the question.
+        </p>
+        <p>
+          Guo, et al., in "Active-Dormant Attention Heads"
+          <d-cite
+            key="guo2024activedormantattentionheadsmechanistically"
+          ></d-cite>
+          investigated the same question but from a different angle. They
+          trained a 3L GPT2-style transformer on bigram backcopy task and then
+          investigated which heads were heavily involved in the backcopy task.
+          Then they showed this heads were dormant when the bigram backcopy
+          input isn't present.
+        </p>
+        <p>
+          While the question was sort of answered already, I thought it would
+          still be a good exercise present the thought process I went through
+          while attempting to answer the question.
+        </p>
+
+        <p>
+          In this remainder of this post, I briefly motivate what an attention
+          head is doing, explain induction heads and how to look for them (with
+          visualizations) and show what happens when the induction heads input
+          isn't present.
+        </p>
+        <p>Feel free to skip parts you're familiar with.</p>
+
+        <h2 id="attn_doing">What is an attention head doing ?</h2>
+        <h3 id="attn_intuition">Intuitive overview</h3>
+        <p>In summary, attention heads move information between tokens!</p>
+        <figure id="resid_stream_view">
+          <img
+            src="/assets/img/resid_stream_with_attn_mlp.png"
+            alt="A simplified view of the transformer"
+            width="600"
+          />
+          <figcaption>
+            Fig. 1: A simplified view of the transformer. Source:
+            <a href="https://transformer-circuits.pub/2021/framework/index.html"
+              >A mathematical framework for transformer circuits.</a
+            >
+          </figcaption>
+        </figure>
+        <p>
+          The residual stream is the main object in the transformer. A way I
+          think of it is that it represents what the model currently thinks
+          about all the tokens in it's context, up to a particular layer. To
+          enrich and further refine the representation of the tokens in the
+          context, attention heads move information from earlier tokens in the
+          context to later tokens in the context
+          <d-cite key="elhage2021mathematical"></d-cite> and MLP blocks compose
+          information and perform retrieval tasks
+          <d-cite key="Geva2020TransformerFL"></d-cite>.
+        </p>
+        <h3 id="attn_concrete">More concretely</h3>
+        <p>
+          The input to the attention layer is the residual stream
+          <d-footnote
+            >In the first layer, this is the sum of token embeddings and
+            positional embeddings.</d-footnote
+          >
+          with shape
+          <code class="language-plaintext">[batch_size, seq_len, d_model]</code
+          >. This input is linearly projected using three weight matrices:
+          <code class="language-plaintext">W_Q</code>,
+          <code class="language-plaintext">W_K</code>, and
+          <code class="language-plaintext">W_V</code>, each of shape
+          <code class="language-plaintext">[d_model, d_model]</code>, to produce
+          the query (<code class="language-plaintext">Q</code>), key (<code
+            class="language-plaintext"
+            >K</code
+          >), and value (<code class="language-plaintext">V</code>) matrices.
+        </p>
+        <p>
+          In multi-head attention, <code class="language-plaintext">Q</code>,
+          <code class="language-plaintext">K</code>, and
+          <code class="language-plaintext">V</code> are split into
+          <code class="language-plaintext">num_heads</code> parts. Each head
+          processes a subspace of the input, with
+          <code class="language-plaintext">Q</code> and
+          <code class="language-plaintext">K</code> shaped as
+          <code class="language-plaintext"
+            >[batch_size, num_heads, seq_len, d_k]</code
+          >
+          and <code class="language-plaintext">V</code> as
+          <code class="language-plaintext"
+            >[batch_size, num_heads, seq_len, d_v]</code
+          >, where
+          <code class="language-plaintext">d_k = d_v = d_model / num_heads</code
+          >.
+        </p>
+        <p>
+          For each head, <strong>attention scores</strong> are computed as the
+          dot product of query and key vectors, scaled by
+          <code class="language-plaintext">1/√d_k</code>. The scores are passed
+          through a softmax to obtain the <strong>attention pattern</strong>,
+          which represents the importance of each token relative to others. This
+          pattern is then multiplied by the value vectors to produce the head's
+          output. The outputs of all heads are concatenated and projected using
+          a weight matrix <code class="language-plaintext">W_O</code> of shape
+          <code class="language-plaintext">[d_model, d_model]</code> to yield
+          the final attention output, shaped
+          <code class="language-plaintext">[batch_size, seq_len, d_model]</code
+          >.
+        </p>
+        <p>
+          From Vaswani et al. <d-cite key="attentionneed"></d-cite>, the
+          attention mechanism is defined as: $$ \text{Attention}(Q, K, V) =
+          \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V $$ Multi-head
+          attention is expressed as: $$ \text{MultiHead}(Q, K, V) =
+          \text{Concat}(\text{head}_1, \dots, \text{head}_h)W^O $$ $$
+          \text{where } \text{head}_i = \text{Attention}(QW_i^Q, KW_i^K, VW_i^V)
+          $$ Here, <code class="language-plaintext">W_i^Q</code>,
+          <code class="language-plaintext">W_i^K</code>, and
+          <code class="language-plaintext">W_i^V</code> are head-specific
+          projection matrices.
+        </p>
+        <h3 id="attn_further_q">Further questions</h3>
+        <p>
+          The next logical question is, how does each attention head across all
+          the layers know what sort of information to pay attention to? During
+          pre-training, the goal is optimizing the next-token objective w.r.t
+          the parameters of the model, over the language domain. It stands to
+          reason that over the course of multiple steps of gradient descent,
+          each attention head learns to pay attention to some pattern (semantic
+          or syntactic) in the language data and this pattern, when learned,
+          contributes to lower loss.
+        </p>
+        <p>And indeed, numerous papers have explored this assumption.</p>
+        <p>
+          In both decoder-only and encoder-decocder transformers, attention
+          heads have been discovered that specialize in attending to different
+          parts of speech, as well as other lingustic propertites such direct
+          objects of verbs, noun determiners, e.t.c.
+          <d-cite
+            key="vig-belinkov-2019-analyzing, clark-etal-2019-bert"
+          ></d-cite>
+        </p>
+        <p>
+          Interesting mechanisms that further enable LLMs to act
+          autoregressively have been discovered, such as Copy Supression heads
+          <d-cite
+            key="mcdougall2023copysuppressioncomprehensivelyunderstanding"
+          ></d-cite>
+          and Induction heads
+          <d-cite key="elhage2021mathematical, olsson2022context"></d-cite>
+        </p>
+
+        <p>
+          A logical conclusion of the above paragraphs is that what attention
+          heads pay attention to is input-specific. This begs the question :
+          What does an attention head pay attention to, when it's input isn't
+          present?
+        </p>
+
+        <h2 id="induction_head">Induction heads</h2>
+        <p>
+          I'll present a super simplified explanation of Induction heads here,
+          but to better understand Induction heads mechanistically, Callum
+          McDougall wrote
+          <a
+            href="https://www.lesswrong.com/posts/TvrfY4c9eaGLeyDkE/induction-heads-illustrated"
+            >a quite interesting explainer blog</a
+          >
+          which I invite readers to check out. The paper
+          <d-cite key="olsson2022context"></d-cite> also goes into a lot more
+          details that I only mention slightly such as the presence of
+          previous-token heads and the role of the QK/OV circuit.
+        </p>
+        <p>
+          Assume arbitrary tokens <code class="language-plaintext">A, B</code>.
+          Then assume a sequence of tokens with
+          <code class="language-plaintext">A</code> followed by
+          <code class="language-plaintext">B</code> and then some other
+          arbitrary tokens. The next time the model sees
+          <code class="language-plaintext">A</code>, i.e
+          <code class="language-plaintext">[A B ... A]</code>, B turns out to be
+          one of the highly likely next tokens.
+        </p>
+        <p>
+          Anthropic researchers found these phenomenon in as little as 2L
+          transformer. One of the conclusions is that the model has learnt to
+          increase the logits on <code class="language-plaintext">B</code> if
+          the last token in the sequence is
+          <code class="language-plaintext">A</code> and indeed, it's theorized
+          that Induction heads is one of the mechanisms behind In-context
+          learning.
+        </p>
+        <p>
+          For this to be true, there has to be a previous-token head. This
+          ensures that the first occurrence of
+          <code class="language-plaintext">[B]</code> pays attention to the
+          first occurrence of <code class="language-plaintext">[A]</code> and
+          the \(W_V\) matrix copies <code class="language-plaintext">A</code> to
+          the subspace of <code class="language-plaintext">B</code>. Then when
+          <code class="language-plaintext">A</code> occurs in the context again,
+          for some head \(\hat{h}\), the second occurrence of
+          <code class="language-plaintext">A</code> pays attention to the first
+          occurrence of <code class="language-plaintext">B</code>, sees that
+          <code class="language-plaintext">A</code> is in the residual stream of
+          <code class="language-plaintext">B</code> and then copies
+          <code class="language-plaintext">B</code> to the residual stream of
+          the second occurrence of <code class="language-plaintext">A</code> and
+          increases it's logits. This new head \(\hat{h}\) is an induction head.
+        </p>
+        <h2 id="induction_head_gpt2">Identifying Induction heads in GPT2</h2>
+        <h3 id="induction_input">Inputs</h3>
+        <p>
+          We sample <code class="language-plaintext">N = 25</code> random tokens
+          from the vocabulary of a transformer language model and duplicate it
+          along it's axis. This becomes the input to the transformer.
+        </p>
+        <p>
+          Input to the transformer is a matrix of shape
+          <code class="language-plaintext">[1, 2 * N + 1, d_model]</code> i.e
+          batch is 1, sequence length is 2 * N + 1
+          <d-footnote
+            >+ 1 because we append the bos token to the sequence</d-footnote
+          >
+          and d_model = embedding dimension of the transformer language model.
+        </p>
+        <p>
+          Pass this sequence of randomly repeated tokens into GPT2 and cache the
+          activations. This can be done easily by loading the model with
+          <a href="https://transformerlensorg.github.io/TransformerLens/"
+            >transformer lens</a
+          >
+          and running <br />
+          <code class="language-plaintext"
+            >_, cache = model.run_with_cache(input_tokens)</code
+          >
+        </p>
+        <h3 id="induction_metric">Metric</h3>
+        <p>
+          Assume we have some head <code class="language-plaintext">h</code> at
+          some layer <code class="language-plaintext">l</code>, the attention
+          pattern is defined as, $$ \text{A}^{l, h} =
+          \text{softmax}\left(\frac{Q_{l, h}K^T_{l, h}}{\sqrt{d_k}}\right) $$
+        </p>
+        <p>
+          We define <strong>induction score</strong> for head
+          <code class="language-plaintext">h</code> in layer
+          <code class="language-plaintext">l</code>
+          as a measurement of how much attention a token in the second repeat
+          (at position <code class="language-plaintext">i + N</code>) pays to
+          its corresponding token in the first repeat (at position
+          <code class="language-plaintext">i</code>). It's represented as:
+        </p>
+        $$I(l, h) = \frac{1}{N} \sum_{i = 1} ^N A^{l, h} [i + N, i] $$
+
+        <h3 id="induction_identify">Identifying induction heads</h3>
+        Retrieve the attention pattern from the cache and for each head in each
+        layer, calculate the induction score as defined above.
+        <pre>
+def induction_head_detector( cache, cfg, ) -> list:
+    induction_heads = [] 
+    for layer_idx in range(cfg.n_layers): 
+        for head_idx in range(cfg.n_heads): 
+            # fetch the attention pattern at some layer and some head
+            attn_pattern = cache["pattern",layer_idx][head_idx] 
+            rand_tok_seq_len = (attn_pattern.shape[1] -1) // 2 
+            # compute the induction score for the attention pattern
+            score = attn_pattern.diagonal(-rand_tok_seq_len + 1).mean() 
+            # filter with threshold of 0.4
+            if score.item() >= 0.4:
+                induction_heads.append((layer_idx, head_idx)) 
+    return induction_heads</pre
+        >
+
+        <h3 id="induction_result">Results</h3>
+        <p>Below is a visual map of the induction heads present in GPT2</p>
+        <iframe
+          src="/assets/plotly/induction_head_only.html"
+          height="650px"
+          frameborder="0"
+        ></iframe>
+
+        <p>
+          Below is an interactive visualization of the attention patterns for
+          the induction heads identified above.
+        </p>
+        <iframe
+          src="/assets/plotly/attention_viz_induction.html"
+          width="100%"
+          height="650px"
+          frameborder="0"
+        ></iframe>
+
+        <h2 id="what_if">What happens if the induction input isn't present?</h2>
+        <h3 id="normal_input">Inputs</h3>
+        <p>
+          Load a tiny subset of the
+          <a href="https://huggingface.co/datasets/NeelNanda/pile-10k"
+            >10K pile dataset.</a
+          >For the purpose of this experiment, I used
+          <code class="language-plaintext">batch = 1</code> and
+          <code class="language-plaintext">sequence_length = 128.</code>
+        </p>
+        <p>
+          Forward pass is also ran on this input and the activations are cached
+          as in the case above as well.
+        </p>
+        <p>
+          For the induction heads that were identified in
+          <a href="#induction_result">the section above</a>, we simply visualize
+          the attention pattern for these heads.
+        </p>
+
+        <h3 id="normal_res">Results</h3>
+        <iframe
+          src="/assets/plotly/attention_viz_normal.html"
+          width="100%"
+          height="650px"
+          frameborder="0"
+        ></iframe>
+        As can be observed, these heads all pay an overwhelming amount of
+        attention to the first token.
+
+        <h2 id="closing">Closing thoughts</h2>
+        <p>
+          Guo et. al.,
+          <d-cite
+            key="guo2024activedormantattentionheadsmechanistically"
+          ></d-cite>
+          observed that not only the first token, but other special tokens, get
+          an overwhelming amount of attention in dormant cases.
+        </p>
+        <p>
+          They showed further evidence of this phenomenon by confirming that the
+          value vectors of these tokens were much smaller than that of other
+          tokens
+          <d-footnote
+            >This lends evidence to the fact that the information being written
+            back to the residual stream is not of huge consequence.</d-footnote
+          >
+          and the residual stream norm for this tokens were relatively small as
+          well.
+        </p>
+        <p>
+          This however isn't the only explanation for the first-token/special
+          token phenomenon observed in attention heads. Federico
+          <d-footnote
+            >Personally, I enjoy Federico's papers and especially his
+            <a href="https://www.youtube.com/watch?v=FAspMnu4Rt0">interview</a>
+            on MLST podcast.</d-footnote
+          >
+          et. al. <d-cite key="barbero2025llmsattendtoken"></d-cite>, has a
+          paper where he also investigates why attention sinks exists and
+          presents an alternative explanation. <strong>TLDR</strong>: They serve
+          the purpose of preventing mode collapse.
+        </p>
+

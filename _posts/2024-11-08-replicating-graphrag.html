@@ -1,0 +1,406 @@
+﻿---
+layout: distill
+title: 'Replicating GraphRAG paper'
+description: 'a replication of ''From Local to Global'''
+date: 2024-11-08
+bibliography: graphrag.bib
+---
+
+<d-contents>
+          <nav class="l-text figcaption">
+            <h3>Contents</h3>
+            <div><a href="#background">Background</a></div>
+            <div><a href="#notes">Organizational notes</a></div>
+            <div><a href="#chunks">Text Chunking</a></div>
+            <div><a href="#entities">Entity extraction</a></div>
+            <div><a href="#clustering">Graph clustering</a></div>
+            <div><a href="#community">Community summary</a></div>
+            <div><a href="#query">How are queries answered?</a></div>
+            <div><a href="#discussion">Discussion</a></div>
+            <div><a href="#Acknowledgements">Acknowledgements</a></div>
+            <!-- <div><a href="#footnotes">Code Blocks</a></div>
+            <div><a href="#interactive-plots">Interactive Plots</a></div>
+            <div><a href="#layouts">Layouts</a></div>
+            <div><a href="#other-typography">Other Typography?</a></div> -->
+          </nav>
+        </d-contents>
+        <h2 id="background">Introduction</h2>
+        <p>
+          Microsoft research recently put out the GraphRAG paper
+          <d-cite key="edge2024localglobalgraphrag"></d-cite>. In this post, I
+          share my attempt at replicating the paper and some thoughts about
+          tradeoffs to be made when working with retrieval systems in general.
+        </p>
+        <p>
+          The summary of the paper is, we can structure the information in a
+          body of documents as a graph by thinking of every object in the
+          document as an entity and drawing it's relationship with other
+          entities. Once we have this graph, we can then reason over it to draw
+          insights and conclusions that otherwise we might not be able to draw.
+          <figure>
+            <img
+              src="/assets/img/graphrag/pipeline.png"
+              class="img-fluid rounded z-depth-1"
+              width="100%"
+              height="auto"
+              loading="eager"
+              onerror="this.onerror=null; $('.responsive-img-srcset').remove();"
+              alt="Snippet from entity extraction prompt"
+            />
+            <figcaption>GraphRAG pipeline.</figcaption>
+          </figure>
+        </p>
+        <p>
+          In the paper, Microsoft research used podcast transcripts and news
+          article as the knowledge source over which retrieval is done. I
+          decided to use a podcast episode - specifically,
+          <a href="https://www.youtube.com/watch?v=UTuuTTnjxMQ"
+            >Dwarkesh Patel's interview with Mechanistic Interpretability
+            researchers Trenton Bricken and Sholto Douglas</a
+          >.
+        </p>
+        <p>
+          I would expect readers to be fairly familiar with the GraphRAG paper
+          <d-cite key="edge2024localglobalgraphrag"></d-cite>.
+        </p>
+
+        <h2 id="notes">Organizatinal notes</h2>
+        I encourage readers to probably read through the whole post and refer to
+        this section from time to time.
+        <ul>
+          <li>
+            For evaluation, I used one of the transcripts of
+            <a href="https://www.youtube.com/watch?v=UTuuTTnjxMQ"
+              >Dwarkesh Patel's podcast</a
+            >
+            as the knowledge source.
+          </li>
+
+          <li>
+            During development, I used a bunch of models to test out the
+            different components, but for the final graph index generation and
+            inference, I used
+            <a href="https://console.groq.com/settings/limits"
+              >LLAMA 3.2 90B text-preview</a
+            ><d-cite key="llama3_2"></d-cite>, provided by
+            <a href="https://console.groq.com/playground">Groq</a>. That being
+            said, Gemma 9B seems to perform the best on entity-relationship
+            extraction
+            <d-footnote
+              >I judged this because I have listened to the podcast episode and
+              I was able to roughly access the quality of the generation for
+              different models.</d-footnote
+            >
+            .
+          </li>
+          <li>
+            I implemented a single hierarchy of clustering graph nodes and
+            edges.
+          </li>
+          <li>
+            For the sake of optimizing for API the number of calls / requests to
+            <a href="https://console.groq.com/playground">Groq</a>, I
+            implemented global search with a vectorDB, as opposed to LLM
+            summarization in the graphrag paper.
+            <d-cite key="edge2024localglobalgraphrag"></d-cite>
+          </li>
+          <li>
+            I did not implement
+            <a href="https://microsoft.github.io/graphrag/query/local_search/"
+              >local search</a
+            >, covariates and a couple of other details that were token/api
+            calls-expensive.
+          </li>
+          <li>
+            LLM-derived Knowledge graph can be viewed
+            <a href="/assets/html/network.html">here</a>
+          </li>
+          <li>
+            <a href="https://github.com/israel-adewuyi/graphrag"
+              >Link to repository</a
+            >,
+            <a href="https://graphrag-impl.streamlit.app/"
+              >Link to streamlit chat interface</a
+            ><d-footnote
+              >I did not exactly optimise the chat interface to be a
+              conversational agent like SOTA chat agents. Ask questions, get a
+              response.
+            </d-footnote>
+          </li>
+        </ul>
+        <h2 id="chunks">Text Chunking</h2>
+        <p>
+          Dwarkesh provides
+          <a
+            href="https://www.dwarkeshpatel.com/p/sholto-douglas-trenton-bricken?open=false#%C2%A7transcript"
+            >links</a
+          >
+          to the transcripts of his podcast episodes, so it was easy to get the
+          transcripts of the episode. To preserve the notion of turn-based
+          conversation, I chunked the transcript text based on each speaker's
+          speech.
+          <details>
+            <summary>More info</summary>
+            <p>
+              Usually, the podcast transcripts are roughly structured as
+              <figure class="highlight">
+                <pre><code class="language-python" data-lang="python"><span class="kn">Speaker A (timestamp)</span> 
+<span class="kn"># Speaker A's speech</span>
+<span class="kn">Speaker B (timestamp)</span> 
+<span class="kn"># Speaker B's speech</span>
+              </code></pre>
+              </figure>
+            </p>
+          </details>
+        </p>
+
+        <p>
+          After chunking the
+          <a
+            href="https://www.dwarkeshpatel.com/p/sholto-douglas-trenton-bricken?open=false#%C2%A7transcript"
+            >transcripts</a
+          >
+          along each speaker's speech, there were approximately 483 chunks. I
+          analyzed the token length of each chunk.
+          <img
+            src="/assets/img/graphrag/Sholto&Trenton.png"
+            class="img-fluid rounded z-depth-1"
+            width="100%"
+            height="auto"
+            loading="eager"
+            onerror="this.onerror=null; $('.responsive-img-srcset').remove();"
+            alt="Token distribution for chunks in the original chunk set"
+          />
+        </p>
+        <p>
+          Along the lines of the original paper and for reasons I explain the
+          next section, I decided to merge chunks, such that each chunk had an
+          average size of 1000 tokens
+          <d-footnote
+            >In the original paper, the authors used an average size of 600
+            tokens. </d-footnote
+          >. This reduced the number of chunks from
+          <code class="language-plaintext">483</code> to
+          <code class="language-plaintext">47</code>.
+          <img
+            src="/assets/img/graphrag/Sholto&Trenton_merged.png"
+            class="img-fluid rounded z-depth-1"
+            width="100%"
+            height="auto"
+            loading="eager"
+            onerror="this.onerror=null; $('.responsive-img-srcset').remove();"
+            alt="Token distribution for chunks in the original chunk set"
+          />
+        </p>
+
+        <h2 id="entities">Entity extraction</h2>
+        <p>
+          I hardcoded a list of entity types and manually asked ChatGPT to
+          extraxt entity types from some random sample of chunks, which I then
+          filtered for repeated entity types - this was because extracting the
+          entity type for each chunk was expensive with respect to api calls. I
+          ended up with a list of
+          <a
+            href="https://github.com/israel-adewuyi/graphrag/blob/master/config/entities.py"
+            >33 entity types.</a
+          >.
+        </p>
+        <!-- TODO: in thinking, rltn between entity types and the quality of info retrieved.-->
+        <p>The entity-relationship extraction phase is in two stages.</p>
+        <p>
+          In the first stage, I prompted the LLM to extract all the entities and
+          relationships from each chunk and output the results in json format.
+          For each entity, I extract the entity_name, entity_type and
+          description. For each relationship, I extract the source entity,
+          target entity, relationship description.
+        </p>
+        <figure>
+          <img
+            src="/assets/img/graphrag/image.png"
+            class="img-fluid rounded z-depth-1"
+            width="100%"
+            height="auto"
+            loading="eager"
+            onerror="this.onerror=null; $('.responsive-img-srcset').remove();"
+            alt="Snippet from entity extraction prompt"
+          />
+          <figcaption>Snippet from entity extraction prompt.</figcaption>
+        </figure>
+        <p>
+          In the second stage, for each entity-relationship json retrieved for
+          each chunk, I prompt the LLM a second time to check if it has
+          extracted all the possible entities and relationship. The authors
+          referred to this as gleaning
+          <d-footnote
+            >The prompts I used here and other parts of this implementation were
+            largely taken from
+            <a
+              href="https://github.com/microsoft/graphrag/tree/main/graphrag/prompt_tune/template"
+              >the official github implementation.</a
+            > </d-footnote
+          >. For most chunks, this seemed to extract almost as many
+          relationships as it did, the first time.
+        </p>
+
+        <p>
+          A <a href="/assets/html/network.html">knowledge graph</a> is then
+          built from the entities and their relationships that have been
+          extracted. I used the
+          <a href="https://networkx.org/documentation/stable/index.html"
+            >NetworkX</a
+          >
+          library to construct the network graph.<d-cite
+            key="trajanoska2023enhancingknowledgegraphconstruction"
+          ></d-cite>
+          <d-cite key="SciPyProceedings_11"></d-cite>
+        </p>
+        <p>
+          <!-- TODO: mention this in thoughts
+                      note the usage of entity and relationship which guides the blog 
+          -->
+          A problem here which can be observed from the
+          <a href="/assets/html/network.html">knowledge graph</a> is that there
+          are a bunch of entities that are not captured in any relatioship with
+          another entity.
+        </p>
+
+        <p>
+          In practise, this means that there were two api calls per chunk. In
+          the previous setup where I had > 450 chunks, this would have been
+          close to 1000 api calls but now, I had less than 100 chunks for the
+          whole document.
+        </p>
+        <h2 id="clustering">Graph clustering</h2>
+        <p>
+          Now, we have a graph that's fairly representative of the whole
+          document. A key insight at this stage is that we can group nodes and
+          edges into communities which in principle should be representative of
+          some semantic relatinoship between all the nodes in the community.
+        </p>
+        <p>
+          In following with the original paper, I used the Leiden algorithm
+          <d-cite key="traag2019louvain"></d-cite> provided in
+          <a href="https://cdlib.readthedocs.io/en/latest/">cdlib library</a> to
+          cluster the graph into communities and I did the graph clustering for
+          a single hierarchy level.
+          <!-- TODO:  if I can build graph from communities -->
+          <img
+            src="/assets/img/graphrag/graph_community.png"
+            class="img-fluid rounded z-depth-1"
+            width="70%"
+            height="auto"
+            loading="eager"
+            onerror="this.onerror=null; $('.responsive-img-srcset').remove();"
+            alt="Token distribution for chunks in the original chunk set"
+          />
+        </p>
+
+        <h2 id="community">Community summary</h2>
+        <p>
+          My implementation here highly differs from the original
+          implementation. To understand the decision I made, let's delve into
+          what happens when there is a global search on a query.
+        </p>
+        <p>
+          In the original implementation of global search, when there is a
+          query, an LLM is used to generate intermediate answer and a relevancy
+          score to this query,for <strong>each</strong> community summary. Now,
+          this is alot of API calls!!.
+          <d-footnote
+            >See <a href="https://console.groq.com/settings/limits">here</a> for
+            the rate limits on requests and tokens per day</d-footnote
+          >
+        </p>
+        <p>
+          A neat thing I thought to do, was to generate a list of conclusions or
+          mini-summaries for each community cluster. So instead of just a single
+          community summary, there are a list of insights and conclusions for
+          each community that are generated after the clustering process.
+        </p>
+        <p>
+          These conclusions are indexed in a
+          <a
+            href="https://python.langchain.com/api_reference/community/vectorstores/langchain_community.vectorstores.faiss.FAISS.html"
+            >vectorDB</a
+          >.
+        </p>
+        <h2 id="query">How are queries answered?</h2>
+        <p>
+          For each query, I run a similarity search with all vectors in the
+          vectorDB from the previous section and I return 15 vectors,<d-footnote
+            >The choice here is arbitrary. A more principled way would have been
+            to use some threshold similarity score or keep adding retrieved docs
+            to the prompt till it exceeds context length or number of tokens per
+            query.</d-footnote
+          >
+          along with their similarity scores. These conclusions, their scores
+          and the original query are then fed into the LLM for a synthesized
+          respnse.
+        </p>
+        <p>
+          To also be efficient with tokens, I also implemented caching
+          responses. This means that if a query is sent and at some time later,
+          a similar query is sent
+          <d-footnote>or the system deems similar</d-footnote>, it returns the
+          previous results. You could imagine in a large scale system where
+          there is the potential to have a lot of duplicate queries and being
+          able to save resources.
+        </p>
+        <p>I did not implement conversation history.</p>
+
+        <h2 id="discussion">Discussion / Final thoughts</h2>
+        <ol>
+          <li>
+            As mentioned in <a href="#entities">this discussion</a> , there were
+            some entities without relationships with other entities in the
+            <a href="/assets/html/network.html">knowledge graph</a>. My
+            thoughts, supported by the paper is that it would be possible to
+            extract more relationships and also entities by running more rounds
+            of gleaning.
+          </li>
+          <li>
+            The quality of the generations, from the knowledge graph to the
+            query response would probably be better with more advanced models
+            like GPT 4o.
+          </li>
+          <li>
+            Gleaning was able to capture significantly more relationships, but
+            more entities were also introduced to the knowledge graph. I expect
+            that with more rounds of gleaning, this should be resolved neatly.
+            However, it's unclear if more rounds of gleaning will be supported
+            by the context length of the model.
+          </li>
+          <li>
+            The approach of drawing insights from communities and using these
+            insights to generate response would add alot of latency to the
+            retrival process when this is over huge datasets, such as the whole
+            set of all Dwarkesh's podcasts
+            <d-footnote
+              >I plan to work on this sometime in the near future</d-footnote
+            >. The rationale is, similarity search is over pieces of text which
+            are way smaller than chunks, but for each chunk, there are 5 - 20
+            such texts.
+          </li>
+          <li>
+            Work is not done. I plan to extend this to, at the time of this
+            writing, ~80 Dwarkesh episodes.
+          </li>
+        </ol>
+        <h2 id="Acknowledgements">Acknowledgements</h2>
+        <ol>
+          <li>
+            <a href="https://rustam-lukmanov.com/">Professor Rustam Lukmanov</a>
+            for suggesting the project in the first place, providing feedback
+            and the motivation to do this write-up.
+          </li>
+          <li>
+            <a href="http://kimfom.space">Kim Fom</a> for useful feedback on
+            writing good code.
+          </li>
+          <li>
+            <strong>Khush Patel</strong> for some advice related to deployment
+            of the admittedly unpolished interface and tradeoffs when choosing a
+            vectorDB.
+          </li>
+        </ol>
+

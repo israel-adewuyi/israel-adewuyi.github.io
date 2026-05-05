@@ -1,7 +1,7 @@
-# this file uses prebuilt image in dockerhub
+# this file builds a local image that matches Gemfile.lock
 services:
   jekyll:
-    image: amirpourmand/al-folio:latest
+    image: israel-adewuyi-blog:local
     build: .
     ports:
       - 8080:8080

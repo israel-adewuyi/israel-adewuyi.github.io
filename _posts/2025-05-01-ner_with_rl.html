@@ -1,0 +1,676 @@
+﻿---
+layout: distill
+title: 'Reinforcement Learning Meets NER'
+description: 'an attempt at solving Named Entity Recognition with RL training.'
+date: 2025-05-01
+bibliography: graphrag.bib
+---
+
+<d-contents>
+          <nav class="l-text figcaption">
+            <h3>Contents</h3>
+            <div><a href="#karoche">TLDR</a></div>
+            <div><a href="#intro">Introduction</a></div>
+            <div><a href="#background">Background</a></div>
+            <nav class="sub-nav">
+              <div><a href="#why-llms-suck">Why LLMs suck at NER</a></div>
+              <div>
+                <a href="#summary">Summary of related approaches</a>
+              </div>
+            </nav>
+            <div><a href="#method">Method</a></div>
+            <nav class="sub-nav">
+              <div><a href="#dataset">Dataset</a></div>
+              <div><a href="#prompt">Prompt</a></div>
+              <nav class="sub-sub-nav">
+                <div><a href="#task-desc">Task description</a></div>
+                <div><a href="#few-shot">Few shot demonstrations</a></div>
+                <div><a href="#output-format">LLM Output Format</a></div>
+              </nav>
+              <div><a href="#reward">RL and Reward design</a></div>
+            </nav>
+            <div><a href="#experiment">Experiment</a></div>
+            <nav class="sub-nav">
+              <div><a href="#eval">Evaluation</a></div>
+            </nav>
+            <div><a href="#results">Results / Charts</a></div>
+            <nav class="sub-nav">
+              <div>
+                <a href="#chart1">F1 score comparison across approaches</a>
+              </div>
+              <div><a href="#chart2">Model sizes comparison</a></div>
+              <div>
+                <a href="#chart3"
+                  >F1 score comparison across epochs and base model</a
+                >
+              </div>
+            </nav>
+            <div><a href="#closing">Closing Thoughts</a></div>
+            <div><a href="#acknowledgement">Acknowledgements</a></div>
+            <div><a href="#citation">Citation Information</a></div>
+            <!-- <div><a href="#footnotes">Code Blocks</a></div>
+            <div><a href="#interactive-plots">Interactive Plots</a></div>
+            <div><a href="#layouts">Layouts</a></div>
+            <div><a href="#other-typography">Other Typography?</a></div> -->
+          </nav>
+        </d-contents>
+        <h2 id="karoche">TLDR</h2>
+        <p>
+          <i
+            >This work represents preliminary experimental reports, and should
+            be treated as such. See the closing thoughts for more details.</i
+          >
+        </p>
+        <ul>
+          <li>
+            Via RL training, we achieved up to 7.3% increase in F1 score on a
+            1.5B model, on an NER task, compared to 175B GPT3-based baselines.
+          </li>
+          <li>
+            The RL trained model underperforms some other approaches, mostly
+            involving some form of SFT.
+          </li>
+          <li>
+            We offer some closing thoughts on this as well as future possible
+            directions of research.
+          </li>
+        </ul>
+
+        <p>
+          Feel free to skip to Methods section or start from the introduction
+          below.
+        </p>
+        <p>
+          Code is up at
+          <a href="https://github.com/israel-adewuyi/ner_with_grpo"
+            >this repo</a
+          >
+        </p>
+        <h2 id="intro">Introduction</h2>
+        <p>
+          Large Language Models (LLMs) built on the Transformer architecture
+          <d-cite key="attentionneed"></d-cite>
+          have transformed Natural Language Processing (NLP), achieving SOTA
+          results in tasks such as text generation, translation, and sentiment
+          analysis
+          <d-cite key="radford2019language"></d-cite>. At the same time, Named
+          Entity Recognition (NER)—the process of identifying and classifying
+          proper names and other key terms in text—remains a core NLP task in
+          applications like information extraction, question answering, machine
+          translation
+          <d-cite key="keraghel2024recentadvancesnamedentity"></d-cite>.
+        </p>
+        <p>
+          Recently, researchers have revisited Reinforcement Learning (RL) as a
+          means of adapting LLMs to specific objectives without full retraining.
+          By defining reward functions or training reward models that is
+          specific to the domain/task in question, RL fine‑tuning can elicit
+          desired behaviors from a pre‑trained model. This approach has already
+          shown promise in areas such as competitive mathematics
+          <d-cite
+            key="chen-etal-2025-learning, shao2024deepseekmathpushinglimitsmathematical, openai2025competitiveprogramminglargereasoning"
+          ></d-cite>
+          and code generation
+          <d-cite
+            key="gehring2025rlef, wang2025enhancingcodellmsreinforcement"
+          ></d-cite
+          >.
+        </p>
+        <p>
+          In this work, we bring these threads together. We fine‑tune a 1.5B
+          Qwen2.5
+          <d-cite key="qwen2025qwen25technicalreport"></d-cite> model on the
+          CoNLL2003 NER
+          <d-cite key="sang2003introductionconll2003sharedtask"></d-cite>, using
+          carefully designed reward signals to guide entity recognition
+          performance. Our results demonstrate that, even with modest model
+          size, RL‑based adaptation can rival much larger architectures such as
+          GPT‑3, highlighting the potential of reinforcement learning for
+          structured NLP tasks.
+        </p>
+
+        <h2 id="background">Background</h2>
+        <h3 id="why-llms-suck">Why LLMs suck at NER</h3>
+        <p>
+          LLMs like Qwen2.5-1.5
+          <d-cite key="qwen2025qwen25technicalreport"></d-cite>, Llama
+          <d-cite key="grattafiori2024llama3herdmodels"></d-cite>, Gemini
+          <d-cite key="geminiteam2024geminifamilyhighlycapable"></d-cite>, e.t.c
+          are pretrained on massive datasets with the objective being to predict
+          the next token in a sequence. This makes them great for tasks like
+          text generation but less effective for NER.
+        </p>
+        <p>Why?</p>
+        <p>
+          NER requires a different approach, as it involves identifying and
+          classifying entities within text. This is a token-level task, where
+          the goal is to label specific tokens accurately.
+        </p>
+        <p>
+          Imed et. al.
+          <d-cite key="keraghel2024recentadvancesnamedentity"></d-cite>
+          provided a comprehensive overview of the advances in the field of NER,
+          but most relevant approaches to this work, which are summarized below,
+          are approaches that leverage LLMs to solve NER task.
+        </p>
+        <h3 id="summary">Summary of related approaches</h3>
+        <!-- <p>
+          Most supervised methods treat NER task as a sequence labelling task
+          which involves representing each token/string as an high-dimensional
+          vector and then assigning a label to each token. This is done using a
+          combination of recurrent neural networks (RNNs) and conditional random
+          fields (CRFs) [8]. The RNNs are used to capture the sequential nature
+          of the data, while the CRFs are used to model the dependencies between
+          labels. This approach has been successful in many cases, but it
+          requires a large amount of annotated data and can be computationally
+          expensive.
+        </p>
+        <h3 id="unsupervised">Summary of unsupervised approaches</h3> -->
+        <p>
+          The core idea in most of the works listed below involves primarily
+          prompt engineering
+          <d-footnote>
+            Which is just a fancy way of saying almost all of them reformulated
+            the task in some way that the LLM might be able to solve
+            easier.</d-footnote
+          >
+          and some combination of In Context Learning (ICL) and Supervised
+          Finetuning (SFT). In the ICL paradigm, LLMs learn new tasks by being
+          shown a few examples (few-shot) in the prompt which makes them
+          flexible for new tasks without extra training while in the SFT
+          paradigm, an LLM is further trained on specific, labeled data to make
+          it better at the said task.
+          <d-footnote
+            >It's akin to fine-tuning a general tool for a specific
+            job.</d-footnote
+          >
+        </p>
+        <p>
+          GPT-NER introduced by Wang et al
+          <d-cite key="wang2023gptnernamedentityrecognition"></d-cite> and LTNER
+          introduced by Yan et al
+          <d-cite key="Yan2024LTNERLL"></d-cite>
+          reformulated the sequence labelling task as a text generation task by
+          prompting the LLM to generate the input text with the identified
+          entities marked by special tokens. Both methods rely heavily on ICL.
+          For retrieving these few-shot examples, GPT-NER investigated various
+          strategies including embeddings derived from a fine-tuned NER model
+          while LTNER utilizes vector-based retrieval from a knowledge base to
+          find the most relevant examples for contextual learning. Additionally,
+          GPT-NER introduced a self-verification strategy to combat
+          hallucination.
+        </p>
+        <p>
+          PromptNER introduced by Ashok and Lipton<d-cite
+            key="Ashok2023PromptNERPF"
+          ></d-cite>
+          kept the task as a sequence labelling task
+          <d-footnote
+            >By prompting the LLM to list the entities in the text, given a
+            predefined list of entities</d-footnote
+          >, but they introduced Chain-of-Thought (CoT) prompting, as well as
+          giving an explanation of all the predefined entity types.
+        </p>
+        <p>
+          GoLLIE introduced in <d-cite key="Sainz2023GoLLIEAG"></d-cite> and
+          InstructUIE introduced in
+          <d-cite key="Wang2023InstructUIEMI"></d-cite> both proposed
+          instruction tuning frameworks for information retrieval using LLMs.
+          GoLLIE fine-tunes an LLM to follow annotation guidelines, with tasks
+          and guidelines represented in a code-based format. In contrast,
+          InstructUIE employs natural language instructions within a unified
+          text-to-text framework to model various IE tasks.
+        </p>
+        <p>
+          CodeIE <d-cite key="Li2023CodeIELC"></d-cite> and Code4UIE
+          <d-cite key="Guo2023RetrievalAugmentedCG"></d-cite> also transform the
+          sequence labelling task into a code generation task to leverage the
+          code generation capabilities of LLMs.
+        </p>
+        <table style="border: 1px solid black">
+          <thead>
+            <tr>
+              <th>Method</th>
+              <th>Approach</th>
+              <th>Model size</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>GPT-NER</td>
+              <td>ICL</td>
+              <td>Text-davinci-003</td>
+            </tr>
+            <tr>
+              <td>LTNER</td>
+              <td>ICL</td>
+              <td>GPT-3.5-turbo</td>
+            </tr>
+            <tr>
+              <td>PROMPT-NER</td>
+              <td>ICL</td>
+              <td>GPT4</td>
+            </tr>
+            <tr>
+              <td>CodeIE</td>
+              <td>ICL</td>
+              <td>Code-davinci-002</td>
+            </tr>
+            <tr>
+              <td>Code4UIE</td>
+              <td>ICL</td>
+              <td>Text-davinci-003</td>
+            </tr>
+            <tr>
+              <td>GPT-NER</td>
+              <td>ICL + SFT</td>
+              <td>Text-davinci-003</td>
+            </tr>
+
+            <tr>
+              <td>GoLLIE</td>
+              <td>SFT</td>
+              <td>Code-LLaMA 34B</td>
+            </tr>
+
+            <tr>
+              <td>InstructUIE</td>
+              <td>SFT</td>
+              <td>Flan-T5-11B</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- { name: "OURS\n(Qwen2.5-1.5B)", size: "1.5B", highlight: true }, { name:
+        "InstructUIE\n(Flan-T5-11B)", size: "11B", highlight: false }, { name:
+        "LTNER\n(GPT3.5-Turbo)", size: "175B", highlight: false }, { name:
+        "PromptNER\n(GPT4)", size: "175B", highlight: false }, -->
+
+        <h2 id="method">Method</h2>
+        <h3 id="dataset">Dataset</h3>
+        <p>
+          The CoNLL2003 introduced by Eric et. al.
+          <d-cite key="sang2003introductionconll2003sharedtask"></d-cite> has
+          four types of named entities: Location (LOC), Organization (ORG),
+          Person (PER), and Miscellaneous (MISC). We leveraged the preprocessed
+          NER dataset by Li et al. (2019a)
+          <d-cite key="li2022unifiedmrcframeworknamed"></d-cite>. A sample from
+          the dev set which is downloadable from their
+          <a href="https://github.com/ShannonAI/mrc-for-flat-nested-ner"
+            >github repo</a
+          >
+          looks like
+        </p>
+
+        <pre>
+  {
+    "context": "4 - Goran Ivanisevic ( Croatia ) beat Scott Draper ( Australia ) 6-7 ( 1-7 ) 6-3 6-4 6-4",
+    "end_position": [
+      3,
+      9
+    ],
+    "entity_label": "PER",
+    "impossible": false,
+    "qas_id": "174.2",
+    "query": "person entities are named persons or family.",
+    "span_position": [
+      "2;3",
+      "8;9"
+    ],
+    "start_position": [
+      2,
+      8
+    ]
+  }
+</pre
+        >
+        <p>
+          <code>context</code> - the input text from which entities are to be
+          extracted. <br />
+          <code>entity_label</code> - the entity to be extracted <br />
+          <code>query</code> - an explanation of the entity to be extracted.
+        </p>
+        <!-- <hr style="width: 50%; margin: 0 auto" />
+          -->
+        <br />
+        <h3 id="prompt">Prompt</h3>
+        <pre>
+  """
+  A conversation between User and Assistant. The User provides a string of words. 
+  The task of the Assistant is to identify all the {entity_label} entities 
+  in the given string and return the entities surrounded by an entity tag.
+  DESCRIPTION: {query}
+  
+  The reasoning process should be enclosed within &lt;think&gt; &lt;/think&gt; tags, 
+  and the relevant words should be enclosed within &lt;entity&gt; &lt;/entity&gt; tags.
+  i.e &lt;think&gt; reasoning process here &lt;/think&gt; &lt;entity&gt; comma separated 
+  list of words that are locations&lt;/entity&gt;
+  
+  {example}
+  
+  User: {context}
+  Assistant: 
+  """
+              </pre
+        >
+        <p>
+          <code>entity_label</code> - the entity to be extracted <br />
+          <code>query</code> - an explanation of the entity to be extracted -
+          same as in the dataset. <br />
+          <code>example</code> - few shot examples for the current
+          <code>entity_label</code> <br />
+          <code>context</code> - the input text from which entities are to be
+          extracted. <br />
+        </p>
+        <p>
+          The prompt construction method used in this work relies heavily and
+          closely mirrors the fantastic work done by in the research literature.
+          An overview of the relevant parts are provided below:
+        </p>
+
+        <p style="margin-bottom: 24px"></p>
+        <h4 id="task-desc">Task description</h4>
+        <p>
+          Following the preprocessing step done by Eric et. al.
+          <d-cite key="sang2003introductionconll2003sharedtask"></d-cite> and
+          Wang et al.
+          <d-cite key="wang2023gptnernamedentityrecognition"></d-cite>, for each
+          input sentence, N prompts are constructed where N is the number of
+          entities in the dataset <d-footnote>N = 4 for CoNLL2003</d-footnote>.
+          Following the PromptNER
+          <d-cite key="Ashok2023PromptNERPF"></d-cite> paper, we asked the model
+          to generate a CoT inside the think tag and we also added an
+          explanation for each entity type to the prompt.
+        </p>
+        <br />
+        <br />
+        <h4 id="few-shot">Few shot demonstrations</h4>
+        <p>
+          To generate in-context examples, we randomly sample 2 sentences from
+          the dev set of the CoNLL dataset for each entity type Deepseek-V3-base
+          is prompted to solve the task and the result is manually inspected and
+          included in the prompt, without any modifications.
+        </p>
+
+        <br />
+        <h4 id="output-format">LLM Output Format.</h4>
+        <p>
+          As visible from the prompt template, the LLM is prompted to output the
+          CoT inside the think tag and then the list of entities in the entity
+          tag.
+        </p>
+        <p>
+          As an example, consider the following. The LLM is prompted to identify
+          the location entity, <code>LOC</code> in the following text:
+          <code
+            >Japan began the defence of their Asian Cup title with a lucky 2-1
+            win against Syria in a Group C championship match on Friday .</code
+          >
+          Results from Deepseek-V3-base :
+        </p>
+        <pre>
+  <code
+          >&lt;think&gt; </code> 1. **Japan**: This is a country in East Asia, which is a politically and geographically defined location. It fits the criteria for a LOCATION entity. 
+  2. **Asian Cup**: This refers to a football tournament, not a specific geographic or political location, so it does not qualify as a LOCATION entity. 
+  3. **Syria**: This is a country in the Middle East, which is a politically and geographically defined location. It fits the criteria for a LOCATION entity. 
+  4. **Group C**: This refers to a group in the tournament, not a geographic or political location, so it does not qualify as a LOCATION entity. 
+  5. The rest of the words ("began", "the", "defence", "of", "their", "title", "with", "a", "lucky", "2-1", "win", "against", "in", "a", "championship", "match", "on", "Friday") are not location names and do not fit the criteria. 
+  <code
+          >&lt;/think&gt; </code> 
+  <code
+          >&lt;entity&gt; </code>Japan, Syria<code
+          >&lt;/entity&gt; </code>
+          </pre>
+        <p style="margin-bottom: 24px"></p>
+        <h3 id="reward">RL and Reward Design</h3>
+        <p>
+          To guide the model to output things in the desired format, we utilize
+          GRPO
+          <d-cite key="shao2024deepseekmathpushinglimitsmathematical"></d-cite>
+          which discards the critic model which is meant to provide some
+          baseline for the advantage estimates. Instead, for each prompt, GRPO
+          samples <code>m</code> outputs, which are referred to as
+          <strong>group</strong>
+          and the average outcome reward from the group serves as an estimate
+          for the baseline.
+        </p>
+        <p>
+          For each output in the group, four reward functions were designed to
+          provide signals to the policy model. The design of the reward function
+          was inspired by the amazing work of
+          <a
+            href="https://gist.github.com/willccbb/4676755236bb08cab5f4e54a0475d6fb"
+            >Willccb's grpo demo</a
+          >.
+        </p>
+        <ul>
+          <li>
+            <strong>Soft Format Reward:</strong> Awards 0.5 if the output
+            follows the required format (<code
+              >&lt;think&gt;...&lt;/think&gt;
+              &lt;entity&gt;...&lt;/entity&gt;</code
+            >), ensuring structural consistency.
+          </li>
+          <li>
+            <strong>Correctness Reward:</strong> Gives 2.0 if the extracted
+            entities exactly match the ground truth, emphasizing accuracy.
+          </li>
+          <li>
+            <strong>Positive Entity Correctness Reward:</strong> Adds 0.5 for
+            each correctly identified entity, rewarding partial correctness.
+          </li>
+          <li>
+            <strong>Negative Entity Correctness Reward:</strong> Subtracts 0.5
+            for each incorrectly included entity, penalizing overprediction.
+          </li>
+        </ul>
+        <p>
+          These rewards work together to encourage the model to identify
+          entities accurately while adhering to the expected format. For
+          example, if the model correctly identifies “Japan, Syria” as Locations
+          but includes an extra incorrect entity, it receives a positive reward
+          for the correct entities but a penalty for the mistake.
+        </p>
+        <div class="highlight">
+          <p><strong>Example Reward Calculation:</strong></p>
+          <p>
+            Input: “Japan began the defence of their Asian Cup title with a
+            lucky 2-1 win against Syria.”
+          </p>
+          <p>
+            Ground Truth: <code>&lt;entity&gt;Japan, Syria&lt;/entity&gt;</code>
+          </p>
+          <p>
+            Model Output:
+            <code>&lt;entity&gt;Japan, Syria, Asian Cup&lt;/entity&gt;</code>
+          </p>
+          <ul>
+            <li>Soft Format: 0.5 (correct format)</li>
+            <li>Correctness: 0.0 (not an exact match)</li>
+            <li>Positive Entity: 1.0 (0.5 for Japan + 0.5 for Syria)</li>
+            <li>Negative Entity: -0.5 (penalty for Asian Cup)</li>
+          </ul>
+        </div>
+
+        <h2 id="experiment">Experiment</h2>
+        <p>
+          As stated earlier,
+          <a href="https://huggingface.co/Qwen/Qwen2-1.5B-Instruct"
+            >Qwen2-1.5B-Instruct</a
+          >
+          was utilized in this experiment.
+          <a href="https://huggingface.co/docs/trl/main/en/index"
+            >TRL library</a
+          >
+          provided by HuggingFace, alongsides modifications to
+          <a
+            href="https://gist.github.com/willccbb/4676755236bb08cab5f4e54a0475d6fb"
+            >Willccb's grpo demo</a
+          >
+          repository, were used to construct a training and eval pipeline. The
+          model was also trained on 4 epochs on
+          <strong>2 Nvidia A100</strong> GPUs. Relevant hyperparameters are:
+        </p>
+        <pre>
+  training_args = GRPOConfig(
+    ...
+    learning_rate=5e-6,
+    adam_beta1 = 0.9,
+    adam_beta2 = 0.99,
+    weight_decay = 0.1,
+    warmup_ratio = 0.1,
+    lr_scheduler_type='cosine',
+    bf16=True,
+    per_device_train_batch_size=4,
+    num_generations=8,
+    max_prompt_length=2048,
+    max_completion_length=2048,
+    num_train_epochs=4,
+    save_strategy="epoch",
+    max_grad_norm=0.1,
+    report_to="wandb",
+    log_on_each_node=False,
+  )
+        </pre>
+        <p>More details can be found in the repository.</p>
+        <h3 id="eval">Evaluation</h3>
+        <p>F1 score is reported for the RL-trained model.</p>
+        <ul>
+          <li>
+            To compare with other methods, the best F1 score evaluation across 4
+            epochs is reported.
+          </li>
+          <li>VLLM was used for sampling from the transformers.</li>
+          <li>
+            To ensure robustness, F1 score across 16 generations are averaged
+            and reported, both in comparison to other methods and in comparison
+            across epochs.
+          </li>
+          <li>
+            To evaluate the RL-trained model,
+            <a href="#few-shot">few shot examples</a> were included in the
+            prompt.
+          </li>
+        </ul>
+        <h2 id="results">Results / Charts</h2>
+        <h3 id="chart1">F1 score comparison across approaches</h3>
+        <p>
+          The chart below shows the F1 score of the fine-tuned model in
+          comparison with other methods described in the
+          <a href="#summary">relevant works section</a>.
+        </p>
+        <div style="max-width: 800px; margin: auto">
+          <canvas id="resultsChart" width="800" height="400"></canvas>
+        </div>
+        <h3 id="chart2">Model sizes comparison</h3>
+        <p>
+          The chart below compares the model sizes across all the methods listed
+          above
+        </p>
+        <div style="max-width: 900px; margin: auto">
+          <canvas id="modelSizeChart" width="800" height="400"></canvas>
+        </div>
+        <p>Notes:</p>
+        <ul>
+          <li>
+            Parameter count of code-davinci-003 isn't publicly known, but
+            inferring from the naming convention, it's based on the GPT3 model,
+            which is reported to be 175B.
+            <d-cite key="Brown2020LanguageMA"></d-cite>
+          </li>
+          <li>
+            GPT3.5-Turbo also doesn't have it's parameter count publicly known.
+            But based on the the GPT3 model count, 175B is conservative.
+          </li>
+          <li>
+            The same logic applies to GPT4. Though, it's rumoured to be around
+            1.7T parameters. So 175 is also conservative.
+          </li>
+        </ul>
+        <h3 id="chart3">F1 score comparison across epochs</h3>
+        <p>
+          The chart below shows the result of evaluating a saved checkpoint from
+          each epoch as well as the base Qwen1.5B model with few-shot examples
+          or without.
+        </p>
+        <div style="max-width: 900px; margin: auto">
+          <canvas id="baseModelChart" width="800" height="400"></canvas>
+        </div>
+        <h2 id="closing">Closing thoughts</h2>
+        <p>
+          This work explored, albeit, in a limited scope, how much RL training
+          can improve the performance of LLMs on NER task and the results show
+          impressive performance for small-sized LLMs.
+        </p>
+        <p>
+          It's important to emphasize (and this are my current thoughts) that RL
+          training benefits from a good base pretrained model, as the current RL
+          training paradigm encourage exploitation more than they do
+          exploration. It's useful to think of the current RL training paradigm
+          as stabilizing the distribution over the domain of interest, so if the
+          model cannot, under any inference sampling, over number of generations
+          that tend to infinity, sample the answer, most likely it cannot be
+          learned during an RL training paradigm. This intuition is informed by
+          the performance of LLMs on math and code tasks under base + SFT + RL
+          vs only base and RL.
+        </p>
+        <p>
+          Future work would investigate other NER datasets (in other domains),
+          how much performance is lost or retained in other tasks/benchmarks of
+          interest, different structures to reward model as well as how small
+          can the models be to get competitive performance, especially in real
+          world applications, where the tradeoff of efficiency and correctness
+          is often the focal point.
+        </p>
+        <p>
+          It would also be interesting to do Interpretability on these models.
+          What about the model changes when it's RL trained
+        </p>
+        <h2 id="acknowledgement">Acknowledgements</h2>
+        <p>
+          Gratitude goes to the Institute of Software Engineering at Innopolis
+          university, led by
+          <a
+            href="https://scholar.google.com/citations?hl=en&user=16AyxX0AAAAJ&view_op=list_works&sortby=pubdate"
+            >Professor Vladmir Ivanov</a
+          >
+          for providing compute. I am also grateful to the following persons:
+        </p>
+        <ul>
+          <li>
+            Ilnur Khadiev for helping out with fixing GPU-related issues every
+            so often.
+          </li>
+          <li>
+            Nursultan Abdullaev for providing feedback on an initial draft.
+          </li>
+        </ul>
+        <h2 id="citation">Citation information</h2>
+        <p>Cite as:</p>
+        <div class="highlight">
+          Israel, Adewuyi. (May, 2025). Reinforcement Learning meets NER
+          https://israel-adewuyi.github.io/blog/2025/ner_with_rl/.
+        </div>
+        or
+        <pre>
+
+  @article{israel2025ner_rl,
+    title   = "Reinforcement Learning Meets NER",
+    author  = "Israel, Adewuyi",
+    journal = "israel-adewuyi.github.io",
+    year    = "2025",
+    month   = "May",
+    url     = "https://israel-adewuyi.github.io/blog/2025/ner_with_rl/"
+  }
+        </pre>
+        <!-- <h2 id="background">Things to check</h2>
+
+        <ul>
+          <li>
+            I am open-sourcing the code, model and the output logs of the model
+            during trainings
+          </li>
+
+          <li>Filtering the train set might also be a good thing</li>
+        </ul> -->
+
