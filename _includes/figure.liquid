@@ -6,6 +6,9 @@
   {% if include.slot %}
     slot="{{ include.slot }}"
   {% endif %}
+  {% if include.figure_class %}
+    class="{{ include.figure_class }}"
+  {% endif %}
 >
   <picture>
     <!-- Auto scaling with imagemagick -->
@@ -44,8 +47,16 @@
       {% else %}
         height="auto"
       {% endif %}
-      {% if include['min-width'] or include['min-height'] or include['max-width'] or include['max-height'] %}
+      {% if include.scale or include['min-width'] or include['min-height'] or include['max-width'] or include['max-height'] %}
         style="
+          {% if include.scale %}
+            width: {{ include.scale }};
+            max-width: 100%;
+            height: auto;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+          {% endif %}
           {% if include['min-width'] %}
             min-width: {{ include.min-width }};
           {% endif %}

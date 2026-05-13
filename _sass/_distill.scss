@@ -48,6 +48,15 @@ d-article {
   b i {
     display: inline;
   }
+  d-math,
+  d-math *,
+  .katex,
+  .katex *,
+  .katex-display,
+  mjx-container,
+  mjx-container * {
+    color: var(--global-text-color) !important;
+  }
   blockquote {
     border-left: 2px solid var(--global-theme-color) !important;
   }
