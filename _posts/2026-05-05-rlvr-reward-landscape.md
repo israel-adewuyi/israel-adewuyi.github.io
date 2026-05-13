@@ -1,6 +1,6 @@
 ---
 layout: distill
-title: 'RLVR Reward Landscape'
+title: '[Draft] RLVR Reward Landscape'
 description: '...'
 date: 2026-05-05
 bibliography: rlvr_landscape.bib
@@ -47,130 +47,6 @@ toc:
 
 This work is a WIP case study. The goal is to probe one concrete setup and surface hypotheses about local reward geometry that could be tested across more models, tasks, perturbation scales, and seeds.
 
-
-<figure id="fig-grpo-landscape-summary" class="l-page rlvr-summary-figure">
-  <img
-    src="{{ '/assets/img/rlvr_landscape/grpo_landscape_summary.svg' | relative_url }}"
-    alt="Diagram summarizing the GRPO reward landscape experiment: train checkpoints, probe local two-dimensional perturbation slices, and observe high-reward policies concentrate in the low-KL neighborhood."
-    width="100%"
-  >
-  <figcaption>
-    <strong>Summary figure.</strong> The experiment treats each GRPO checkpoint as the center of a local policy neighborhood. Perturbing the checkpoint in a two-dimensional parameter slice shows where reward remains high as KL from the checkpoint policy increases.
-  </figcaption>
-</figure>
-
-## Eval chart demo
-
-```echarts
-{
-  "animationDuration": 900,
-  "animationEasing": "cubicOut",
-  "grid": {
-    "left": 18,
-    "right": 18,
-    "top": 38,
-    "bottom": 52,
-    "containLabel": true
-  },
-  "tooltip": {
-    "trigger": "item",
-    "formatter": "{b}: {c}"
-  },
-  "xAxis": {
-    "type": "category",
-    "data": [
-      "Gemini 2.5 Pro",
-      "Poolside Nova",
-      "Grok 5",
-      "GPT-5",
-      "Mistral Large 3",
-      "Claude Opus 4.7"
-    ],
-    "axisTick": {
-      "show": false
-    },
-    "axisLine": {
-      "lineStyle": {
-        "color": "rgba(128, 128, 128, 0.35)"
-      }
-    },
-    "axisLabel": {
-      "interval": 0,
-      "rotate": 35,
-      "fontSize": 11,
-      "margin": 18
-    }
-  },
-  "yAxis": {
-    "type": "value",
-    "max": 60,
-    "show": false
-  },
-  "series": [
-    {
-      "name": "SWE-bench Verified",
-      "type": "bar",
-      "barWidth": 28,
-      "label": {
-        "show": true,
-        "position": "top",
-        "formatter": "{c}",
-        "fontWeight": 600
-      },
-      "emphasis": {
-        "focus": "series"
-      },
-      "data": [
-        {
-          "value": 44.6,
-          "itemStyle": {
-            "color": "#d6d6d6",
-            "borderRadius": [3, 3, 0, 0]
-          }
-        },
-        {
-          "value": 54.2,
-          "itemStyle": {
-            "color": "#4137ff",
-            "borderRadius": [3, 3, 0, 0]
-          },
-          "label": {
-            "color": "#4137ff"
-          }
-        },
-        {
-          "value": 36.8,
-          "itemStyle": {
-            "color": "#d6d6d6",
-            "borderRadius": [3, 3, 0, 0]
-          }
-        },
-        {
-          "value": 49.7,
-          "itemStyle": {
-            "color": "#d6d6d6",
-            "borderRadius": [3, 3, 0, 0]
-          }
-        },
-        {
-          "value": 39.3,
-          "itemStyle": {
-            "color": "#d6d6d6",
-            "borderRadius": [3, 3, 0, 0]
-          }
-        },
-        {
-          "value": 48.1,
-          "itemStyle": {
-            "color": "#d6d6d6",
-            "borderRadius": [3, 3, 0, 0]
-          }
-        }
-      ]
-    }
-  ]
-}
-```
 
 ## Introduction
 Reinforcement Learning with Verifiable Rewards (RLVR) is often motivated as a way to improve pretrained large language models (LLMs) on specific tasks through trial-and-error <d-cite key="lambert2025tulu3pushingfrontiers, guo2025deepseek"></d-cite>. In practice, reasoning traces are sampled from the model, graded by a verifier, and the resulting reward signal is used to update the policy <d-footnote>In this work, we use policy interchangeably with the model</d-footnote> toward higher-scoring trajectories.
@@ -246,7 +122,9 @@ We evaluate $\pi_t^{(\alpha, \beta)}$ on a $21 \times 21$ grid with $\alpha, \be
 ### Landscape metrics
 For each checkpoint $t$ and each grid point $(\alpha, \beta)$, we evaluate three quantities:
 
-1. GRPO surrogate loss $J_{\mathrm{GRPO}}(\theta_t^{(\alpha, \beta)})$
+<!-- 1. GRPO surrogate loss $J_{\mathrm{GRPO}}(\theta_t^{(\alpha, \beta)})$ with the current policy in place of $\pi_{\text{infer}}$-->
+1. GRPO surrogate objective $J_{\mathrm{GRPO}}(\theta_t^{(\alpha,\beta)})$, evaluated on completions sampled from the unperturbed checkpoint policy $\pi_{\theta_t}$ using prompts from the fixed set $\mathcal{D}$;
+
 2. mean rollout reward
 
    $$
