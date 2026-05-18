@@ -1,7 +1,7 @@
 ---
 layout: distill
-title: '[Draft] RLVR Reward Landscape'
-description: '...'
+title: 'RLVR Reward Landscape'
+description: 'zooming into the local reward landscape around a policy'
 date: 2026-05-05
 bibliography: rlvr_landscape.bib
 hero_image_scale: "70%"
@@ -28,7 +28,6 @@ toc:
       - name: "T1: High-reward policies become concentrated near the current policy."
       - name: "T2: The concentration happens early in the training."
       - name: "T3: RLVR increasingly behaves like local exploitation around the current policy rather than broad exploration."
-  - name: Conclusions
   - name: Limitations
   - name: Acknowledgement
 ---
@@ -444,7 +443,7 @@ How does exploration fit into this? A reasonable conclusion is that the notion o
 
 The evidence seems to suggest that after a small number of updates, useful exploration may be constrained to a low-KL neighborhood of the current policy. In that sense, RLVR may behave less like broad exploration over policy space and more like exploitation within a locally reachable region.
 
-## Conclusions
+
 
 ## Limitations
 - **2D slices are lossy views of a high-dimensional object.** The landscape is a 2-dimensional slice though a ~490M-dimensional space. This is useful for probing local structure, but it is still an approximation as the slice may miss directions where reward, loss, or KL behave differently.
