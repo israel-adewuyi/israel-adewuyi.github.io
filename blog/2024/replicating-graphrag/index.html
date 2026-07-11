@@ -67,9 +67,8 @@ I encourage readers to probably read through the whole post and refer to this se
     <a href="/assets/html/network.html">here</a>
   </li>
   <li>
-    <a href="https://github.com/israel-adewuyi/graphrag">Link to repository</a>,
-    <a href="https://graphrag-impl.streamlit.app/">Link to streamlit chat interface</a
-    ><sup class="footnote-ref"><a href="#footnote-2" id="footnote-ref-2">2</a></sup>
+    <a href="https://github.com/israel-adewuyi/graphrag">Link to repository</a>.
+    <sup class="footnote-ref"><a href="#footnote-2" id="footnote-ref-2">2</a></sup>
   </li>
 </ul>
 <h2  id="chunks">Text Chunking</h2>
@@ -252,12 +251,12 @@ I encourage readers to probably read through the whole post and refer to this se
     <a href="https://rustam-lukmanov.com/">Professor Rustam Lukmanov</a>
     for suggesting the project in the first place, providing feedback and the motivation to do this write-up.
   </li>
-  <li><a href="http://kimfom.space">Kim Fom</a> for useful feedback on writing good code.</li>
+  <li>Kim Fom for useful feedback on writing good code.</li>
   <li>
     <strong>Khush Patel</strong> for some advice related to deployment of the admittedly unpolished interface and tradeoffs when choosing a vectorDB.
   </li>
 </ol>
 <section class="footnotes"><h2>Footnotes</h2><ol><li id="footnote-1">I judged this because I have listened to the podcast episode and I was able to roughly access the quality of the generation for different
       models.</li><li id="footnote-2">I did not exactly optimise the chat interface to be a conversational agent like SOTA chat agents. Ask questions, get a response.</li><li id="footnote-3">In the original paper, the authors used an average size of 600 tokens.</li><li id="footnote-4">The prompts I used here and other parts of this implementation were largely taken from
-    <a href="https://github.com/microsoft/graphrag/tree/main/graphrag/prompt_tune/template">the official github implementation.</a></li><li id="footnote-5">See <a href="https://console.groq.com/settings/limits">here</a> for the rate limits on requests and tokens per day</li><li id="footnote-6">The choice here is arbitrary. A more principled way would have been to use some threshold similarity score or keep adding retrieved docs to the
+    <a href="https://microsoft.github.io/graphrag/prompt_tuning/overview/">the official GraphRAG prompt tuning documentation.</a></li><li id="footnote-5">See <a href="https://console.groq.com/settings/limits">here</a> for the rate limits on requests and tokens per day</li><li id="footnote-6">The choice here is arbitrary. A more principled way would have been to use some threshold similarity score or keep adding retrieved docs to the
     prompt till it exceeds context length or number of tokens per query.</li><li id="footnote-7">or the system deems similar</li><li id="footnote-8">I plan to work on this sometime in the near future</li></ol></section><section class="references"><h2>References</h2><ol><li id="reference-1"><span class="reference-index">[1]</span> Edge et al. (2024). <em>From Local to Global: A Graph RAG Approach to Query-Focused Summarization</em>. <a href="https://arxiv.org/abs/2404.16130" target="_blank" rel="noreferrer">Open source &nearr;</a></li><li id="reference-2"><span class="reference-index">[2]</span> AI (2024). <em>Llama 3.2: Revolutionizing edge AI and vision with open, customizable models</em>. <a href="https://ai.meta.com/blog/llama-3-2-connect-2024-vision-edge-mobile-devices/" target="_blank" rel="noreferrer">Open source &nearr;</a></li><li id="reference-3"><span class="reference-index">[3]</span> Trajanoska et al. (2023). <em>Enhancing Knowledge Graph Construction Using Large Language Models</em>. <a href="https://arxiv.org/abs/2305.04676" target="_blank" rel="noreferrer">Open source &nearr;</a></li><li id="reference-4"><span class="reference-index">[4]</span> Hagberg et al. (2008). <em>Proceedings of the 7th Python in Science Conference</em>.</li><li id="reference-5"><span class="reference-index">[5]</span> Traag et al. (2019). <em>From Louvain to Leiden: guaranteeing well-connected communities</em>. <a href="https://doi.org/10.1038/s41598-019-41695-z" target="_blank" rel="noreferrer">Open source &nearr;</a></li></ol></section></div></div><footer><span>Research record / 2024</span><a href="mailto:isistickz@gmail.com">Discuss this note &nearr;</a></footer></article></main></div></body></html>
