@@ -1,5 +1,6 @@
 ﻿---
 layout: distill
+ledger_published: true
 title: 'Replicating GraphRAG paper'
 description: 'a replication of ''From Local to Global'''
 date: 2024-11-08
@@ -64,7 +65,7 @@ bibliography: graphrag.bib
           <d-cite key="edge2024localglobalgraphrag"></d-cite>.
         </p>
 
-        <h2 id="notes">Organizatinal notes</h2>
+        <h2 id="notes">Organizational notes</h2>
         I encourage readers to probably read through the whole post and refer to
         this section from time to time.
         <ul>
@@ -303,9 +304,9 @@ bibliography: graphrag.bib
         </p>
         <p>
           In the original implementation of global search, when there is a
-          query, an LLM is used to generate intermediate answer and a relevancy
-          score to this query,for <strong>each</strong> community summary. Now,
-          this is alot of API calls!!.
+          query, an LLM is used to generate an intermediate answer and a relevance
+          score for this query for <strong>each</strong> community summary. This
+          requires a lot of API calls.
           <d-footnote
             >See <a href="https://console.groq.com/settings/limits">here</a> for
             the rate limits on requests and tokens per day</d-footnote
@@ -372,8 +373,8 @@ bibliography: graphrag.bib
           </li>
           <li>
             The approach of drawing insights from communities and using these
-            insights to generate response would add alot of latency to the
-            retrival process when this is over huge datasets, such as the whole
+            insights to generate a response would add a lot of latency to the
+            retrieval process when applied to huge datasets, such as the whole
             set of all Dwarkesh's podcasts
             <d-footnote
               >I plan to work on this sometime in the near future</d-footnote

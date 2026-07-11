@@ -1,5 +1,6 @@
 ﻿---
 layout: distill
+ledger_published: true
 title: 'Attention sink'
 description: 'More evidence'
 date: 2025-07-23
@@ -85,7 +86,7 @@ bibliography: attn_sink.bib
         </p>
         <p>Feel free to skip parts you're familiar with.</p>
 
-        <h2 id="attn_doing">What is an attention head doing ?</h2>
+        <h2 id="attn_doing">What is an attention head doing?</h2>
         <h3 id="attn_intuition">Intuitive overview</h3>
         <p>In summary, attention heads move information between tokens!</p>
         <figure id="resid_stream_view">
@@ -188,17 +189,17 @@ bibliography: attn_sink.bib
         </p>
         <p>And indeed, numerous papers have explored this assumption.</p>
         <p>
-          In both decoder-only and encoder-decocder transformers, attention
+          In both decoder-only and encoder-decoder transformers, attention
           heads have been discovered that specialize in attending to different
-          parts of speech, as well as other lingustic propertites such direct
-          objects of verbs, noun determiners, e.t.c.
+          parts of speech, as well as other linguistic properties, such as direct
+          objects of verbs and noun determiners, etc.
           <d-cite
             key="vig-belinkov-2019-analyzing, clark-etal-2019-bert"
           ></d-cite>
         </p>
         <p>
           Interesting mechanisms that further enable LLMs to act
-          autoregressively have been discovered, such as Copy Supression heads
+          autoregressively have been discovered, such as copy-suppression heads
           <d-cite
             key="mcdougall2023copysuppressioncomprehensivelyunderstanding"
           ></d-cite>
@@ -331,6 +332,7 @@ def induction_head_detector( cache, cfg, ) -> list:
         <p>Below is a visual map of the induction heads present in GPT2</p>
         <iframe
           src="/assets/plotly/induction_head_only.html"
+          width="100%"
           height="650px"
           frameborder="0"
         ></iframe>
@@ -354,11 +356,11 @@ def induction_head_detector( cache, cfg, ) -> list:
             >10K pile dataset.</a
           >For the purpose of this experiment, I used
           <code class="language-plaintext">batch = 1</code> and
-          <code class="language-plaintext">sequence_length = 128.</code>
+          <code class="language-plaintext">sequence_length = 128</code>.
         </p>
         <p>
-          Forward pass is also ran on this input and the activations are cached
-          as in the case above as well.
+          A forward pass is also run on this input, and the activations are
+          cached as in the case above.
         </p>
         <p>
           For the induction heads that were identified in
@@ -378,7 +380,7 @@ def induction_head_detector( cache, cfg, ) -> list:
 
         <h2 id="closing">Closing thoughts</h2>
         <p>
-          Guo et. al.,
+          Guo et al.,
           <d-cite
             key="guo2024activedormantattentionheadsmechanistically"
           ></d-cite>
@@ -387,26 +389,26 @@ def induction_head_detector( cache, cfg, ) -> list:
         </p>
         <p>
           They showed further evidence of this phenomenon by confirming that the
-          value vectors of these tokens were much smaller than that of other
+          value vectors of these tokens were much smaller than those of other
           tokens
           <d-footnote
             >This lends evidence to the fact that the information being written
             back to the residual stream is not of huge consequence.</d-footnote
           >
-          and the residual stream norm for this tokens were relatively small as
+          and the residual stream norms for these tokens were relatively small as
           well.
         </p>
         <p>
-          This however isn't the only explanation for the first-token/special
+          This, however, isn't the only explanation for the first-token/special
           token phenomenon observed in attention heads. Federico
           <d-footnote
             >Personally, I enjoy Federico's papers and especially his
             <a href="https://www.youtube.com/watch?v=FAspMnu4Rt0">interview</a>
             on MLST podcast.</d-footnote
           >
-          et. al. <d-cite key="barbero2025llmsattendtoken"></d-cite>, has a
-          paper where he also investigates why attention sinks exists and
-          presents an alternative explanation. <strong>TLDR</strong>: They serve
+          et al. <d-cite key="barbero2025llmsattendtoken"></d-cite>, investigate
+          why attention sinks exist and present an alternative explanation.
+          <strong>TLDR</strong>: They serve
           the purpose of preventing mode collapse.
         </p>
 

@@ -1,5 +1,6 @@
 ---
 layout: distill
+ledger_published: true
 title: 'RLVR Reward Landscape'
 description: 'zooming into the local reward landscape around a policy'
 date: 2026-05-05
@@ -389,7 +390,7 @@ Together, these measurements define a local loss, reward, and divergence landsca
 ## Takeaways
 
 ### T1: High-reward policies become concentrated near the current policy.
-At each checkpoint $t$, we measure the KL divergence between the current policy and pertubed policy $\theta_t^{(\alpha, \beta)}$, all 441 of them, as well as the reward on $D$. A useful but relatively trivial baseline is that low-KL policies are always concentrated near the current checkpoint - the KL is measured relative to the current policy, so it makes sense that perturbations that leave the policy distribution almost unchanged naturally sit close to $\pi_{\theta_t}$ in distribution space.
+At each checkpoint $t$, we measure the KL divergence between the current policy and perturbed policy $\theta_t^{(\alpha, \beta)}$, all 441 of them, as well as the reward on $D$. A useful but relatively trivial baseline is that low-KL policies are always concentrated near the current checkpoint - the KL is measured relative to the current policy, so it makes sense that perturbations that leave the policy distribution almost unchanged naturally sit close to $\pi_{\theta_t}$ in distribution space.
 
 The **nontrivial observation** is that reward becomes concentrated around the current checkpoint too! High-reward perturbed policies are not spread uniformly across the local slice. Instead, they tend to appear in the same region where the perturbed policy remains close to the checkpoint distribution.
 

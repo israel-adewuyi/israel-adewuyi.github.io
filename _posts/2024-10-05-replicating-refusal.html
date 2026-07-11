@@ -1,5 +1,6 @@
 ﻿---
 layout: distill
+ledger_published: true
 title: 'Replicating ''Refusal Mechanism'''
 description: 'a replication of the initial experiments on the ''Refusal Mechanism'''
 date: 2024-10-05
@@ -56,8 +57,8 @@ bibliography: refusal.bib
             2-2B.
           </li>
           <li>
-            I could steer with the refusal heads contribution with Gemma 2-9B
-            albeit, with significant increase in the scaling factor, > 26x
+            I could steer with the refusal heads contribution with Gemma 2-9B,
+            albeit with a significant increase in the scaling factor, &gt; 26x.
           </li>
           <li>For both models, I could steer using the difference vector.</li>
           <li>
@@ -75,7 +76,7 @@ bibliography: refusal.bib
           as the metric
           <d-footnote>
             My intuition is that this metric is quite lossy. See
-            <strong>Takeaways</strong> for disucssion on this. </d-footnote
+            <strong>Takeaways</strong> for discussion on this. </d-footnote
           >. A justification being that, if the model would refuse a behaviour,
           part of the generation starts with “Sorry” and if a model would act
           out the behaviour, “Sure” would be one of the top next predicted
@@ -136,7 +137,7 @@ bibliography: refusal.bib
           behaviour. Going forward, these layers are layers of interest.
         </p>
 
-        <h3>Attention layer activatin patching</h3>
+        <h3>Attention layer activation patching</h3>
         <p>
           The <code class="language-plaintext">resid_post</code> at any layer
           can be decomposed into

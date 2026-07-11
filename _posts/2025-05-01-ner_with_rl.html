@@ -1,5 +1,6 @@
 ﻿---
 layout: distill
+ledger_published: true
 title: 'Reinforcement Learning Meets NER'
 description: 'an attempt at solving Named Entity Recognition with RL training.'
 date: 2025-05-01
@@ -137,7 +138,7 @@ bibliography: graphrag.bib
           LLMs like Qwen2.5-1.5
           <d-cite key="qwen2025qwen25technicalreport"></d-cite>, Llama
           <d-cite key="grattafiori2024llama3herdmodels"></d-cite>, Gemini
-          <d-cite key="geminiteam2024geminifamilyhighlycapable"></d-cite>, e.t.c
+          <d-cite key="geminiteam2024geminifamilyhighlycapable"></d-cite>, etc.
           are pretrained on massive datasets with the objective being to predict
           the next token in a sequence. This makes them great for tasks like
           text generation but less effective for NER.
@@ -149,7 +150,7 @@ bibliography: graphrag.bib
           the goal is to label specific tokens accurately.
         </p>
         <p>
-          Imed et. al.
+          Imed et al.
           <d-cite key="keraghel2024recentadvancesnamedentity"></d-cite>
           provided a comprehensive overview of the advances in the field of NER,
           but most relevant approaches to this work, which are summarized below,
@@ -229,7 +230,7 @@ bibliography: graphrag.bib
           sequence labelling task into a code generation task to leverage the
           code generation capabilities of LLMs.
         </p>
-        <table style="border: 1px solid black">
+        <table>
           <thead>
             <tr>
               <th>Method</th>
@@ -291,7 +292,7 @@ bibliography: graphrag.bib
         <h2 id="method">Method</h2>
         <h3 id="dataset">Dataset</h3>
         <p>
-          The CoNLL2003 introduced by Eric et. al.
+          The CoNLL2003 dataset, introduced by Eric et al.
           <d-cite key="sang2003introductionconll2003sharedtask"></d-cite> has
           four types of named entities: Location (LOC), Organization (ORG),
           Person (PER), and Miscellaneous (MISC). We leveraged the preprocessed
@@ -370,10 +371,9 @@ bibliography: graphrag.bib
           An overview of the relevant parts are provided below:
         </p>
 
-        <p style="margin-bottom: 24px"></p>
         <h4 id="task-desc">Task description</h4>
         <p>
-          Following the preprocessing step done by Eric et. al.
+          Following the preprocessing step by Eric et al.
           <d-cite key="sang2003introductionconll2003sharedtask"></d-cite> and
           Wang et al.
           <d-cite key="wang2023gptnernamedentityrecognition"></d-cite>, for each
@@ -423,7 +423,6 @@ bibliography: graphrag.bib
           >&lt;entity&gt; </code>Japan, Syria<code
           >&lt;/entity&gt; </code>
           </pre>
-        <p style="margin-bottom: 24px"></p>
         <h3 id="reward">RL and Reward Design</h3>
         <p>
           To guide the model to output things in the desired format, we utilize

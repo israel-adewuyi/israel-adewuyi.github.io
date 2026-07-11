@@ -10,6 +10,8 @@ on:
       - "**.bib"
       - "**.html"
       - "**.js"
+      - "**.mjs"
+      - "scripts/**"
       - "**.liquid"
       - "**/*.md"
       - "**.yml"
@@ -37,6 +39,8 @@ on:
       - "**.bib"
       - "**.html"
       - "**.js"
+      - "**.mjs"
+      - "scripts/**"
       - "**.liquid"
       - "**/*.md"
       - "**.yml"
@@ -72,6 +76,12 @@ jobs:
         with:
           ruby-version: "3.2.2"
           bundler-cache: true
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Generate Ledger articles
+        run: node scripts/build-ledger-site.mjs
       - name: Update _config.yml ⚙️
         uses: fjogeleit/yaml-update-action@main
         with:

@@ -1,5 +1,6 @@
 ﻿---
 layout: distill
+ledger_published: true
 title: 'Beyond the Lottery Ticket: Multiple Winning Subnetworks in Pretrained LLMs'
 description: 'Preliminary evidence that random parameter selection can match full parameter RL finetuning.'
 date: 2025-12-13
@@ -171,7 +172,7 @@ bibliography: rl_subnet_1.bib
         <h2 id="fisher_mask">Fisher Mask Works</h2>
         <p>
           To identify which parameters are most important for a given task, we
-          follow the approach laid out by Kirkpatrick et. al.,
+          follow the approach laid out by Kirkpatrick et al.,
           <d-cite key="Kirkpatrick_2017"></d-cite>. The authors estimated the
           importance of some weights to a task by approximating the Fisher
           information matrix of the model parameters.
@@ -385,8 +386,7 @@ for name, param in model.state_dict().items():
           <!-- <img src="/assets/img/rl_subnet_1/jaccard.png" alt="jaccard sim" /> -->
           <img
             src="/assets/img/rl_subnet_1/jaccard.png"
-            alt="jaccard sim"
-            style="transform: scale(0.7)"
+            alt="Jaccard similarity between sparse parameter masks"
           />
           <figcaption>
             Figure 5: Jaccard overlap between the Random masks at 99% sparsity
@@ -452,7 +452,7 @@ for name, param in model.state_dict().items():
             <d-footnote
               >We suspect it would. It should also be straightforward to
               investigate this and it would be pleasantly surprising if it
-              doesnt hold.</d-footnote
+              doesn't hold.</d-footnote
             >
           </li>
           <li>

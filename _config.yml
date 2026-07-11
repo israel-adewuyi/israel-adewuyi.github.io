@@ -2,18 +2,16 @@
 # Site settings
 # -----------------------------------------------------------------------------
 
-title: blank # the website title (if blank, full name will be used instead)
+title: Israel Adewuyi
 first_name: Israel
 middle_name: 
 last_name: Adewuyi
 email: isistickz@gmail.com
 description: > # the ">" symbol means to ignore newlines until "footer_text:"
-  A collection of research notes.
+  Research notes on reinforcement learning, mechanistic interpretability, and representation learning.
 footer_text: >
-  Powered by <a href="https://jekyllrb.com/" target="_blank">Jekyll</a> with <a href="https://github.com/alshedivat/al-folio">al-folio</a> theme.
-  Hosted by <a href="https://pages.github.com/" target="_blank">GitHub Pages</a>.
-  Photos from <a href="https://unsplash.com" target="_blank">Unsplash</a>.
-keywords: jekyll, jekyll-theme, academic-website, portfolio-website # add your own keywords or leave empty
+  Research archive by Israel Adewuyi.
+keywords: reinforcement learning, mechanistic interpretability, representation learning, AI research
 lang: en # the language of your site (for example: en, fr, cn, ru, etc.)
 icon: # the emoji used as the favicon (alternatively, provide image name in /assets/img/)
 
@@ -140,7 +138,7 @@ lsi: false # produce an index for related posts
 
 # Pagination
 pagination:
-  enabled: true
+  enabled: false
 
 related_blog_posts:
   enabled: true
@@ -188,10 +186,10 @@ collections:
   news:
     defaults:
       layout: post
-    output: true
+    output: false
     permalink: /:collection/:title/
   projects:
-    output: true
+    output: false
     permalink: /:collection/:title/
 
 announcements:
@@ -222,7 +220,7 @@ kramdown:
       start_line: 1
 
 # Includes & excludes
-include: ["_pages"]
+include: []
 exclude:
   - bin/
   - CONTRIBUTING.md
@@ -239,6 +237,8 @@ exclude:
   - package.json
   - package-lock.json
   - _pages/about_einstein.md
+  - _design_drafts/
+  - _posts/
   - purgecss.config.js
   - README.md
   - readme_preview/
@@ -272,6 +272,11 @@ defaults:
       path: "assets"
     values:
       sitemap: false
+  - scope:
+      path: ""
+      type: posts
+    values:
+      published: false
 
 sass:
   style: compressed
@@ -290,7 +295,7 @@ jekyll-minifier:
 # -----------------------------------------------------------------------------
 
 jekyll-archives:
-  enabled: [year, tags, categories] # enables year, tag and category archives (remove if you need to disable one of them).
+  enabled: []
   layouts:
     year: archive-year
     tag: archive-tag
