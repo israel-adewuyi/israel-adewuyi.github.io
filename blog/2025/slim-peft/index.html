@@ -1,201 +1,136 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><meta name="description" content="Preliminary evidence that random parameter selection can match full parameter RL finetuning." /><title>Beyond the Lottery Ticket: Multiple Winning Subnetworks in Pretrained LLMs - Israel Adewuyi</title><link rel="stylesheet" href="/assets/ledger/site-common.css" /><link rel="stylesheet" href="/assets/ledger/style.css" /><link rel="stylesheet" href="/assets/ledger/post.css" /><script>window.MathJax={tex:{inlineMath:[['$','$'],['\\(','\\)']],displayMath:[['$$','$$'],['\\[','\\]']]}};</script><script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script><script defer src="/assets/ledger/article-charts.js"></script></head><body><a class="skip-link" href="#article">Skip to article</a><div class="ledger-post-shell"><aside class="ledger-post-rail"><a class="ledger-post-name" href="/">Israel Adewuyi</a><span>Research ledger / 2024-present</span><nav aria-label="Primary navigation"><a href="/"><span>01</span>Home</a><a href="/research/"><span>02</span>Research</a><a href="/publications/"><span>03</span>Publications</a><a href="/about/"><span>04</span>About</a><a href="/cv/"><span>05</span>Profile</a></nav><p>Research record<br />2025.12.13</p></aside><main class="ledger-post-main" id="article"><div class="ledger-post-top"><span>Research archive / Reinforcement learning / Finetuning</span><a href="/research/">Back to research</a></div><article class="ledger-post"><header><p class="ledger-post-prompt">$ open ./research/slim-peft</p><p class="ledger-post-meta">December 13, 2025 / Preliminary evidence that random parameter selection can match full parameter RL finetuning.</p><h1>Beyond the Lottery Ticket: Multiple Winning Subnetworks in Pretrained LLMs</h1></header><div class="ledger-article-layout"><aside class="ledger-article-toc" aria-label="Contents"><span>Contents</span><a class="" href="#intro"><span>01</span> Introduction</a><a class="toc-subsection" href="#tldr"><span>01.01</span> tl,dr of results</a><a class="" href="#background"><span>02</span> Background</a><a class="toc-subsection" href="#notation"><span>02.01</span> Notation</a><a class="toc-subsection" href="#setup"><span>02.02</span> General Experimental Setup</a><a class="toc-subsection" href="#sparse_subnet"><span>02.03</span> Extracting sparse subnetworks</a><a class="" href="#fisher_mask"><span>03</span> Fisher Mask Works</a><a class="toc-subsection" href="#mask_training"><span>03.01</span> Training with mask</a><a class="toc-subsection" href="#fisher_result"><span>03.02</span> Results</a><a class="" href="#rand_mask"><span>04</span> The Surprise: Random Masks Also Work</a><a class="toc-subsection" href="#generate_random_masks"><span>04.01</span> Generating Random Masks</a><a class="toc-subsection" href="#surprising_results"><span>04.02</span> Surprising Results</a><a class="toc-subsection" href="#lr_puzzle"><span>04.03</span> The learning rate puzzle</a><a class="toc-subsection" href="#why_diff_lr"><span>04.04</span> Why Different Learning Rates?</a><a class="toc-subsection" href="#diff_masks_same_params"><span>04.05</span> Do Different Masks Select the Same Parameters?</a><a class="toc-subsection" href="#implications"><span>04.06</span> Implications: The Multiple Ticket Hypothesis</a><a class="" href="#caveat_and_qs"><span>05</span> Caveats and Questions</a><a class="" href="#acknowledgements"><span>06</span> Acknowledgements</a><a class="" href="#citation"><span>07</span> Citation</a></aside><div class="ledger-post-body">
 
-        <h2  id="intro">Introduction</h2>
-        <p>
-          Reinforcement learning fine-tuning is a new axis of scale for
-          increased performance of Large Language Models (LLMs), with labs
-          scaling compute for RL to levels on par with pretraining. Recent works
-          have also attempted to shed light on the how and why RL really works
-          [<a class="citation" href="#reference-1">1</a>, <a class="citation" href="#reference-2">2</a>, <a class="citation" href="#reference-3">3</a>, <a class="citation" href="#reference-4">4</a>, <a class="citation" href="#reference-5">5</a>].
-        </p>
-        <p>
-          Important to this report, Mukherjee et al. (2025)
-          [<a class="citation" href="#reference-4">4</a>]
-          showed that RLVR finetunes a sparse subnetwork in LLMs, as little as
-          5-30% of parameters. With the goal of efficiency in mind, we ask the
-          question,
-          <strong
-            >if most parameters don't change during training, can we identify
-            which ones matter <em>before</em> training begins, and train only
-            those?</strong
-          >
-          In our attempts to answer this question, we expected slightly
-          complicated methods like Fisher Information matrix
-          [<a class="citation" href="#reference-6">6</a>] would be necessary to
-          identify the "special" parameters that matter for learning.
-          <strong>We were wrong.</strong>
-        </p>
-        <p>
-          In this report, we present preliminary findings showing that
-          <strong>random parameter selection</strong> can match full fine-tuning
-          performance when training only ~1% of parameters. This suggests
-          pretrained models may contain not just one winning ticket but
-          potentially many and we are calling this the
-          <strong>Multiple Ticket Hypothesis</strong>.
-        </p>
-        <p>
-          This report details on-going work on a small scale and the main reason
-          for sharing is that we think the temporary findings warrants
-          discussion and are interesting enough to be shared with the wider
-          community.
-          <sup class="footnote-ref"><a href="#footnote-1" id="footnote-ref-1">1</a></sup>
-        </p>
+<h2  id="intro">Introduction</h2>
+<p>
+  Reinforcement learning fine-tuning is a new axis of scale for increased performance of Large Language Models (LLMs), with labs scaling compute for
+  RL to levels on par with pretraining. Recent works have also attempted to shed light on the how and why RL really works
+  [<a class="citation" href="#reference-1">1</a>, <a class="citation" href="#reference-2">2</a>, <a class="citation" href="#reference-3">3</a>, <a class="citation" href="#reference-4">4</a>, <a class="citation" href="#reference-5">5</a>].
+</p>
+<p>
+  Important to this report, Mukherjee et al. (2025)
+  [<a class="citation" href="#reference-4">4</a>]
+  showed that RLVR finetunes a sparse subnetwork in LLMs, as little as 5-30% of parameters. With the goal of efficiency in mind, we ask the question,
+  <strong
+    >if most parameters don't change during training, can we identify which ones matter <em>before</em> training begins, and train only those?</strong
+  >
+  In our attempts to answer this question, we expected slightly complicated methods like Fisher Information matrix
+  [<a class="citation" href="#reference-6">6</a>] would be necessary to identify the "special" parameters that matter for learning.
+  <strong>We were wrong.</strong>
+</p>
+<p>
+  In this report, we present preliminary findings showing that
+  <strong>random parameter selection</strong> can match full fine-tuning performance when training only ~1% of parameters. This suggests pretrained
+  models may contain not just one winning ticket but potentially many and we are calling this the <strong>Multiple Ticket Hypothesis</strong>.
+</p>
+<p>
+  This report details on-going work on a small scale and the main reason for sharing is that we think the temporary findings warrants discussion and
+  are interesting enough to be shared with the wider community.
+  <sup class="footnote-ref"><a href="#footnote-1" id="footnote-ref-1">1</a></sup>
+</p>
 
-        <h3  id="tldr">tl,dr of results</h3>
-        <ul>
-          <li>
-            Random parameter selection at 99% sparsity can match full parameter
-            fine-tuning performance. This suggests pretrained models contain
-            multiple viable subnetworks (the "Multiple Ticket Hypothesis").
-          </li>
-          <li>
-            Fisher Information masks also work, validating parameter importance
-            identification methods, but surprisingly offer no clear advantage
-            over random selection.
-          </li>
-          <li>
-            Different mask types require different optimal learning rates.
-          </li>
-        </ul>
+<h3  id="tldr">tl,dr of results</h3>
+<ul>
+  <li>
+    Random parameter selection at 99% sparsity can match full parameter fine-tuning performance. This suggests pretrained models contain multiple
+    viable subnetworks (the "Multiple Ticket Hypothesis").
+  </li>
+  <li>
+    Fisher Information masks also work, validating parameter importance identification methods, but surprisingly offer no clear advantage over random
+    selection.
+  </li>
+  <li>Different mask types require different optimal learning rates.</li>
+</ul>
 
-        <h2  id="background">Background</h2>
-        <h3  id="notation">Notation</h3>
-        <p style="color: var(--text-color)">
-          Let $\theta$ denote the parameters of an LLM. We use $\theta^{(t)}$ to
-          represent the model parameters at training step $t$, with
-          $\theta^{(0)}$ denoting the initial pretrained model weights and
-          $\theta_i$ to denote the i-th parameter.
-          <br />
-          During an RLVR run, gradients at step t, $g^{(t)}$, are computed via
-          backpropagation, $$g^{(t)} = \nabla_\theta
-          J_{\text{GRPO}}(\theta^{(t)})$$
-        </p>
+<h2  id="background">Background</h2>
+<h3  id="notation">Notation</h3>
+<p style="color: var(--text-color)">
+  Let $\theta$ denote the parameters of an LLM. We use $\theta^{(t)}$ to represent the model parameters at training step $t$, with $\theta^{(0)}$
+  denoting the initial pretrained model weights and $\theta_i$ to denote the i-th parameter.
+  <br />
+  During an RLVR run, gradients at step t, $g^{(t)}$, are computed via backpropagation, $$g^{(t)} = \nabla_\theta J_{\text{GRPO}}(\theta^{(t)})$$
+</p>
 
-        <h3  id="setup">General Experimental Setup</h3>
-        <p>
-          In this report, all experiments are carried out on
-          <a href="https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct"
-            >Qwen2.5-0.5B-Instruct</a
-          >. We trained via GRPO on
-          <a href="https://x.com/kalomaze">Kalomaze</a>'s
-          <a
-            href="https://app.primeintellect.ai/dashboard/environments/kalomaze/alphabet-sort"
-            >Alphabetsort environment</a
-          >. We also use AdamW optimizer for all RLVR runs. This work was also
-          built on
-          <a href="https://www.primeintellect.ai/">Prime-Intellect</a>'s
-          <a href="https://github.com/PrimeIntellect-ai/prime-rl"
-            >RL training library</a
-          >.
-        </p>
-        <p>
-          <strong>Evaluation:</strong> For evaluation, we also use the same
-          Alphabetsort env, selecting 512 samples, seeded to 2001.
-        </p>
+<h3  id="setup">General Experimental Setup</h3>
+<p>
+  In this report, all experiments are carried out on
+  <a href="https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct">Qwen2.5-0.5B-Instruct</a>. We trained via GRPO on
+  <a href="https://x.com/kalomaze">Kalomaze</a>'s
+  <a href="https://app.primeintellect.ai/dashboard/environments/kalomaze/alphabet-sort">Alphabetsort environment</a>. We also use AdamW optimizer for
+  all RLVR runs. This work was also built on <a href="https://www.primeintellect.ai/">Prime-Intellect</a>'s
+  <a href="https://github.com/PrimeIntellect-ai/prime-rl">RL training library</a>.
+</p>
+<p><strong>Evaluation:</strong> For evaluation, we also use the same Alphabetsort env, selecting 512 samples, seeded to 2001.</p>
 
-        <h3  id="sparse_subnet">Extracting sparse subnetworks</h3>
-        <p>
-          Our initial intuition:<br />
-          <strong
-            >Imagine a pretrained LLM with only 2 parameters, p1 and p2. If only
-            one parameter is changed at the end of a training phase with some
-            optimization function $\phi$, say p1, it must mean that p1 is more
-            important than p2 at satisfying $\phi$ is on the training set.
-          </strong>
-          <br /><br />
-          The question now is, how do we identify which parameters are most
-          important for some training data D?
-        </p>
-        <h2  id="fisher_mask">Fisher Mask Works</h2>
-        <p>
-          To identify which parameters are most important for a given task, we
-          follow the approach laid out by Kirkpatrick et al.,
-          [<a class="citation" href="#reference-6">6</a>]. The authors estimated the
-          importance of some weights to a task by approximating the Fisher
-          information matrix of the model parameters.
-        </p>
-        <p>
-          We approximate the Fisher matrix, $F$
-          <sup class="footnote-ref"><a href="#footnote-2" id="footnote-ref-2">2</a></sup>
-          on a large batch of dataset for all the parameters of the model. $$F_i
-          \approx \frac{1}{N} \sum_{n=1}^{N} \left( \frac{\partial \log
-          p(x_n|\theta^{(0)})}{\partial \theta_i} \right)^2$$ where $x_n \sim
-          \text{dataset D}$ <br />
-          In practise, we sample a large batch of data, run a forward pass, a
-          backward pass and $$F_i = \theta_i.\text{grad}^2$$
-        </p>
-        <p>
-          We can then take the top <code>x%</code> of parameters in $F$, set
-          these to <code>True</code> and all else to <code>False</code> and thus
-          creating a binary mask $\text{MASK}_t \in \{0, 1\}^N$ over all
-          parameters.
-        </p>
-        <h3  id="mask_training">Training with mask</h3>
-        <p>
-          During training with a mask, we modify the gradient update step to
-          only affect the masked parameters: $$\tilde{g}^{(t)} = g^{(t)} \odot
-          \text{MASK}^{(t)}$$ $$\theta^{(t+1)} = \theta^{(t)} - \eta_t \cdot
-          \mathcal{U}(\tilde{g}^{(t)}, \theta^{(t)})$$ where $\odot$ denotes
-          element-wise multiplication, $\eta_t$ is the learning rate at step
-          $t$, and $\mathcal{U}$ represents the optimizer's update rule (e.g.,
-          AdamW). This ensures that only the selected subnetwork is updated
-          while the full model is still used for forward passes.
-        </p>
-        <p>
-          In practise and for efficiency gains, we simply store the optimizer
-          states for the subnetwork only.
-        </p>
-        <h3  id="fisher_result">Results</h3>
-        <p>
-          We approximate $F$ using a batch of 1024 samples. We then created two
-          masks, one at 99% sparsity i.e 4,940,328 / 494M parameters and another
-          at 99.9% sparsity i.e 494,032 / 494M parameters. We compare the eval
-          results, as well as the training dynamics in
-          <a href="#fft_vs_fisher">Figure 1</a>
-        </p>
-        <p>
-          We use a learning rate of $10^{-6}$ for the full finetuning run, $5
-          \cdot 10^{-6}$ for the 99% fisher mask and $10^{-5}$ for the 99.9%
-          fisher mask run.
-        </p>
-        <figure id="fft_vs_fisher">
-          <img
-            src="/assets/img/rl_subnet_1/fft_fisher.png"
-            alt="train and eval dynamics"
-          />
-          <figcaption>
-            Figure 1: Metrics comparison between a full finetune run and sparse
-            training runs
-          </figcaption>
-        </figure>
-        <p>
-          This confirms our initial hypothesis that indeed, parameter-importance
-          identification (with Fisher info matrix) might be a way to pickout
-          which subnetworks allow us get comparable levels of performance with
-          the full finetuning.
-        </p>
+<h3  id="sparse_subnet">Extracting sparse subnetworks</h3>
+<p>
+  Our initial intuition:<br />
+  <strong
+    >Imagine a pretrained LLM with only 2 parameters, p1 and p2. If only one parameter is changed at the end of a training phase with some
+    optimization function $\phi$, say p1, it must mean that p1 is more important than p2 at satisfying $\phi$ is on the training set.
+  </strong>
+  <br /><br />
+  The question now is, how do we identify which parameters are most important for some training data D?
+</p>
+<h2  id="fisher_mask">Fisher Mask Works</h2>
+<p>
+  To identify which parameters are most important for a given task, we follow the approach laid out by Kirkpatrick et al.,
+  [<a class="citation" href="#reference-6">6</a>]. The authors estimated the importance of some weights to a task by approximating the Fisher information
+  matrix of the model parameters.
+</p>
+<p>
+  We approximate the Fisher matrix, $F$
+  <sup class="footnote-ref"><a href="#footnote-2" id="footnote-ref-2">2</a></sup>
+  on a large batch of dataset for all the parameters of the model. $$F_i \approx \frac{1}{N} \sum_{n=1}^{N} \left( \frac{\partial \log
+  p(x_n|\theta^{(0)})}{\partial \theta_i} \right)^2$$ where $x_n \sim \text{dataset D}$ <br />
+  In practise, we sample a large batch of data, run a forward pass, a backward pass and $$F_i = \theta_i.\text{grad}^2$$
+</p>
+<p>
+  We can then take the top <code>x%</code> of parameters in $F$, set these to <code>True</code> and all else to <code>False</code> and thus creating a
+  binary mask $\text{MASK}_t \in \{0, 1\}^N$ over all parameters.
+</p>
+<h3  id="mask_training">Training with mask</h3>
+<p>
+  During training with a mask, we modify the gradient update step to only affect the masked parameters: $$\tilde{g}^{(t)} = g^{(t)} \odot
+  \text{MASK}^{(t)}$$ $$\theta^{(t+1)} = \theta^{(t)} - \eta_t \cdot \mathcal{U}(\tilde{g}^{(t)}, \theta^{(t)})$$ where $\odot$ denotes element-wise
+  multiplication, $\eta_t$ is the learning rate at step $t$, and $\mathcal{U}$ represents the optimizer's update rule (e.g., AdamW). This ensures that
+  only the selected subnetwork is updated while the full model is still used for forward passes.
+</p>
+<p>In practise and for efficiency gains, we simply store the optimizer states for the subnetwork only.</p>
+<h3  id="fisher_result">Results</h3>
+<p>
+  We approximate $F$ using a batch of 1024 samples. We then created two masks, one at 99% sparsity i.e 4,940,328 / 494M parameters and another at
+  99.9% sparsity i.e 494,032 / 494M parameters. We compare the eval results, as well as the training dynamics in
+  <a href="#fft_vs_fisher">Figure 1</a>
+</p>
+<p>
+  We use a learning rate of $10^{-6}$ for the full finetuning run, $5 \cdot 10^{-6}$ for the 99% fisher mask and $10^{-5}$ for the 99.9% fisher mask
+  run.
+</p>
+<figure id="fft_vs_fisher">
+  <img src="/assets/img/rl_subnet_1/fft_fisher.png" alt="train and eval dynamics" />
+  <figcaption>Figure 1: Metrics comparison between a full finetune run and sparse training runs</figcaption>
+</figure>
+<p>
+  This confirms our initial hypothesis that indeed, parameter-importance identification (with Fisher info matrix) might be a way to pickout which
+  subnetworks allow us get comparable levels of performance with the full finetuning.
+</p>
 
-        <h2  id="rand_mask">The Surprise: Random Masks Also Work</h2>
-        <p>
-          Having validated the initial intuition, we wanted to establish a
-          baseline for comparison and investigated random parameter selection.We
-          generated random masks at 99% sparsity by uniform sampling parameters
-          to update.
-        </p>
-        <h3  id="generate_random_masks">Generating Random Masks</h3>
-        <p>
-          The implementation is pretty straightforward. We seed a random number
-          generator and select <code>(100 - x)%</code> of parameters uniformly
-          at random, to achieve <code>x%</code> sparsity.
-        </p>
-        <p>
-          We used three different seeds,
-          <code>0</code>, <code>2001</code> and <code>42</code> to get different
-          masks and ran an RL run with these random masks. The results in
-          <a href="#fft_vs_random">Figure 2</a> are at $10^{-4}$, $5 \cdot
-          10^{-5}$ and $5 \cdot 10^{-5}$ respectively.
-        </p>
-        <pre>
+<h2  id="rand_mask">The Surprise: Random Masks Also Work</h2>
+<p>
+  Having validated the initial intuition, we wanted to establish a baseline for comparison and investigated random parameter selection.We generated
+  random masks at 99% sparsity by uniform sampling parameters to update.
+</p>
+<h3  id="generate_random_masks">Generating Random Masks</h3>
+<p>
+  The implementation is pretty straightforward. We seed a random number generator and select <code>(100 - x)%</code> of parameters uniformly at
+  random, to achieve <code>x%</code> sparsity.
+</p>
+<p>
+  We used three different seeds,
+  <code>0</code>, <code>2001</code> and <code>42</code> to get different masks and ran an RL run with these random masks. The results in
+  <a href="#fft_vs_random">Figure 2</a> are at $10^{-4}$, $5 \cdot 10^{-5}$ and $5 \cdot 10^{-5}$ respectively.
+</p>
+<pre>
 rng = np.random.default_rng(seed=42)
 for name, param in model.state_dict().items():
     if param is None:
@@ -208,235 +143,164 @@ for name, param in model.state_dict().items():
     temp_tensor.view(-1)[indices] = True
     active += num_to_generate
     mask_dict[name] = temp_tensor
-        </pre>
-        <h3  id="surprising_results">Surprising Results</h3>
-        <p>
-          <a href="#fft_vs_random">Figure 2</a> surprisingly shows that random
-          parameter selection can match full fine-tuning performance. This
-          finding challenges our initial assumption that some sophisticated
-          parameter identification method would be necessary.
-        </p>
-        <figure id="fft_vs_random">
-          <img
-            src="/assets/img/rl_subnet_1/fft_vs_random.png"
-            alt="comparison of fft and random mask runs"
-          />
-          <figcaption>
-            Figure 2: Comparison of full fine-tuning (FFT) and random mask
-            training. With appropriate learning rate tuning, random masks match
-            or exceed full fine-tuning performance.
-          </figcaption>
-        </figure>
-        <h3  id="lr_puzzle">The learning rate puzzle</h3>
-        <p>
-          The key to making random masks and even the fisher mask work is
-          finding the right learning rate. We swept over multiple learning rates
-          for the random masks at 99% sparsity
-          <sup class="footnote-ref"><a href="#footnote-3" id="footnote-ref-3">3</a></sup>
-          to better understand this relationship and presents our findings in
-          Figures <a href="#hyperparam1">3</a> and <a href="#hyperparam2">4.</a>
-        </p>
-        <p>
-          Random masks perform best at higher lr, compared to full finetuning
-          (and fisher masks). This isn't dissimilar to
-          <a
-            href="https://thinkingmachines.ai/blog/lora/#optimal-learning-rates-for-lora-vs-fullft"
-            >Thinkymachine's work on lora</a
-          >.
-        </p>
+        </pre
+>
+<h3  id="surprising_results">Surprising Results</h3>
+<p>
+  <a href="#fft_vs_random">Figure 2</a> surprisingly shows that random parameter selection can match full fine-tuning performance. This finding
+  challenges our initial assumption that some sophisticated parameter identification method would be necessary.
+</p>
+<figure id="fft_vs_random">
+  <img src="/assets/img/rl_subnet_1/fft_vs_random.png" alt="comparison of fft and random mask runs" />
+  <figcaption>
+    Figure 2: Comparison of full fine-tuning (FFT) and random mask training. With appropriate learning rate tuning, random masks match or exceed full
+    fine-tuning performance.
+  </figcaption>
+</figure>
+<h3  id="lr_puzzle">The learning rate puzzle</h3>
+<p>
+  The key to making random masks and even the fisher mask work is finding the right learning rate. We swept over multiple learning rates for the
+  random masks at 99% sparsity
+  <sup class="footnote-ref"><a href="#footnote-3" id="footnote-ref-3">3</a></sup>
+  to better understand this relationship and presents our findings in Figures <a href="#hyperparam1">3</a> and <a href="#hyperparam2">4.</a>
+</p>
+<p>
+  Random masks perform best at higher lr, compared to full finetuning (and fisher masks). This isn't dissimilar to
+  <a href="https://thinkingmachines.ai/blog/lora/#optimal-learning-rates-for-lora-vs-fullft">Thinkymachine's work on lora</a>.
+</p>
 
-        <figure id="hyperparam1">
-          <img
-            src="/assets/img/rl_subnet_1/eval_scores_step_150.png"
-            alt="Hyperparameter sweep on learning rate for the random mask at 150"
-          />
-          <figcaption>
-            Figure 3: Hyperparameter sweep on learning rate for the random mask
-            at Step 150
-          </figcaption>
-        </figure>
+<figure id="hyperparam1">
+  <img src="/assets/img/rl_subnet_1/eval_scores_step_150.png" alt="Hyperparameter sweep on learning rate for the random mask at 150" />
+  <figcaption>Figure 3: Hyperparameter sweep on learning rate for the random mask at Step 150</figcaption>
+</figure>
 
-        <figure id="hyperparam2">
-          <img
-            src="/assets/img/rl_subnet_1/eval_scores_step_300.png"
-            alt="Hyperparameter sweep on learning rate for the random mask at 300"
-          />
-          <figcaption>
-            Figure 4: Hyperparameter sweep on learning rate for the random mask
-            at Step 300
-          </figcaption>
-        </figure>
-        <h3  id="why_diff_lr">Why Different Learning Rates?</h3>
-        <p>
-          We hypothesize that this learning rate difference paints interesting
-          pictures about the objective we are optimizing for and the training
-          dynamics, with respect to the parameters of the model. Some of our
-          hypotheses are:
-        </p>
-        <ul>
-          <li>
-            <strong
-              >Fisher masks identify parameters already near optima:</strong
-            >
-            The Fisher Information Matrix identifies parameters with high
-            curvature which could be interpreted to be that those parameters are
-            sensitive to changes. These parameters may already be close to their
-            optimal values for the task, requiring only small adjustments (hence
-            lower learning rates).
-          </li>
-          <li>
-            <strong
-              >Random masks require more exploration or wiggling around:</strong
-            >
-            Random parameters are likely further from their optimal values on
-            average, requiring larger updates to find good solutions (hence
-            higher learning rates).
-          </li>
-          <li>
-            <strong>Different regions of the loss landscape:</strong> Fisher
-            masks may operate in high-curvature regions where large steps cause
-            instability, while random masks may, on average, be in a region that
-            appears flat and large steps are relatively safer.
-          </li>
-        </ul>
-        <h3  id="diff_masks_same_params">
-          Do Different Masks Select the Same Parameters?
-        </h3>
+<figure id="hyperparam2">
+  <img src="/assets/img/rl_subnet_1/eval_scores_step_300.png" alt="Hyperparameter sweep on learning rate for the random mask at 300" />
+  <figcaption>Figure 4: Hyperparameter sweep on learning rate for the random mask at Step 300</figcaption>
+</figure>
+<h3  id="why_diff_lr">Why Different Learning Rates?</h3>
+<p>
+  We hypothesize that this learning rate difference paints interesting pictures about the objective we are optimizing for and the training dynamics,
+  with respect to the parameters of the model. Some of our hypotheses are:
+</p>
+<ul>
+  <li>
+    <strong>Fisher masks identify parameters already near optima:</strong>
+    The Fisher Information Matrix identifies parameters with high curvature which could be interpreted to be that those parameters are sensitive to
+    changes. These parameters may already be close to their optimal values for the task, requiring only small adjustments (hence lower learning
+    rates).
+  </li>
+  <li>
+    <strong>Random masks require more exploration or wiggling around:</strong>
+    Random parameters are likely further from their optimal values on average, requiring larger updates to find good solutions (hence higher learning
+    rates).
+  </li>
+  <li>
+    <strong>Different regions of the loss landscape:</strong> Fisher masks may operate in high-curvature regions where large steps cause instability,
+    while random masks may, on average, be in a region that appears flat and large steps are relatively safer.
+  </li>
+</ul>
+<h3  id="diff_masks_same_params">Do Different Masks Select the Same Parameters?</h3>
 
-        <p>
-          A natural question: are the random masks accidentally selecting the
-          same parameters that Fisher masks identify? To answer this, we compute
-          the Jaccard overlap between different masks, defined as $$ J(A, B) =
-          \frac{|A \cap B|}{|A \cup B|} $$
-        </p>
-        <figure id="jaccard">
-          <!-- <img src="/assets/img/rl_subnet_1/jaccard.png" alt="jaccard sim" /> -->
-          <img
-            src="/assets/img/rl_subnet_1/jaccard.png"
-            alt="Jaccard similarity between sparse parameter masks"
-          />
-          <figcaption>
-            Figure 5: Jaccard overlap between the Random masks at 99% sparsity
-            and the Fisher mask.
-          </figcaption>
-        </figure>
-        <p>
-          The Jaccard overlap between the random masks and the Fisher mask, as
-          shown in <a href="#jaccard">Fig. 5</a> is low, about 0.5% on average.
-          This means that the random masks and Fisher mask select almost
-          completely different parameters, yet achieve comparable performance to
-          full fine-tuning.
-        </p>
+<p>
+  A natural question: are the random masks accidentally selecting the same parameters that Fisher masks identify? To answer this, we compute the
+  Jaccard overlap between different masks, defined as $$ J(A, B) = \frac{|A \cap B|}{|A \cup B|} $$
+</p>
+<figure id="jaccard">
+  <!-- <img src="/assets/img/rl_subnet_1/jaccard.png" alt="jaccard sim" /> -->
+  <img src="/assets/img/rl_subnet_1/jaccard.png" alt="Jaccard similarity between sparse parameter masks" />
+  <figcaption>Figure 5: Jaccard overlap between the Random masks at 99% sparsity and the Fisher mask.</figcaption>
+</figure>
+<p>
+  The Jaccard overlap between the random masks and the Fisher mask, as shown in <a href="#jaccard">Fig. 5</a> is low, about 0.5% on average. This
+  means that the random masks and Fisher mask select almost completely different parameters, yet achieve comparable performance to full fine-tuning.
+</p>
 
-        <h3  id="implications">Implications: The Multiple Ticket Hypothesis</h3>
-        <p>
-          These results suggest that LLMs appear to contain multiple viable
-          sparse subnetworks that could be optimized on some task, not just one,
-          for the Alphabet-sort task.
-        </p>
-        <p>
-          The Lottery Ticket Hypothesis (Frankle & Carbin, 2019)
-          [<a class="citation" href="#reference-7">7</a>]
-          proposed that dense networks contain sparse subnetworks that can be
-          trained to match the full network's performance. Frankle and Carbin
-          used iterative magnitude pruning to identify a single winning ticket.
-        </p>
-        <p>
-          Our findings extend the original LTH to the MTH:
-          <strong
-            >For sufficiently over-parameterized pretrained models, there may
-            not be just <em>one</em> winning ticket, but potentially
-            <em>many</em> winning tickets — so many that even random selection
-            is likely to find one
-          </strong>
-          i.e
-          <em
-            >You can just <s>do things</s> select random parameters and
-            train.</em
-          >
-        </p>
-        <p>
-          This explains why Fisher Information masks offer no clear advantage
-          over random selection: Both methods (random masks and fisher masks)
-          simply need to select
-          <em>some</em> viable subnetwork and with appropriate hyperparameter
-          tuning, they would succeed.
-        </p>
+<h3  id="implications">Implications: The Multiple Ticket Hypothesis</h3>
+<p>
+  These results suggest that LLMs appear to contain multiple viable sparse subnetworks that could be optimized on some task, not just one, for the
+  Alphabet-sort task.
+</p>
+<p>
+  The Lottery Ticket Hypothesis (Frankle & Carbin, 2019)
+  [<a class="citation" href="#reference-7">7</a>]
+  proposed that dense networks contain sparse subnetworks that can be trained to match the full network's performance. Frankle and Carbin used
+  iterative magnitude pruning to identify a single winning ticket.
+</p>
+<p>
+  Our findings extend the original LTH to the MTH:
+  <strong
+    >For sufficiently over-parameterized pretrained models, there may not be just <em>one</em> winning ticket, but potentially <em>many</em> winning
+    tickets — so many that even random selection is likely to find one
+  </strong>
+  i.e
+  <em>You can just <s>do things</s> select random parameters and train.</em>
+</p>
+<p>
+  This explains why Fisher Information masks offer no clear advantage over random selection: Both methods (random masks and fisher masks) simply need
+  to select
+  <em>some</em> viable subnetwork and with appropriate hyperparameter tuning, they would succeed.
+</p>
 
-        <h2  id="caveat_and_qs">Caveats and Questions</h2>
+<h2  id="caveat_and_qs">Caveats and Questions</h2>
 
-        <p>
-          These are preliminary results on a small model (Qwen2.5-0.5B) and
-          simple task (alphabet-sort). More questions and ideas to investigate
-          reveal themselves:
-        </p>
+<p>
+  These are preliminary results on a small model (Qwen2.5-0.5B) and simple task (alphabet-sort). More questions and ideas to investigate reveal
+  themselves:
+</p>
 
-        <ul>
-          <li>
-            Does this phenomenon hold for larger models and different (harder)
-            tasks like math, code gen, logical reasoning (or any task that we
-            might want to make the model good at with RLVR)?
-            <sup class="footnote-ref"><a href="#footnote-4" id="footnote-ref-4">4</a></sup>
-          </li>
-          <li>
-            It would seem logical that the parameters being repurposed for task
-            A under a random mask training might be close to optimal for another
-            task B. How does this random mask training affects the RLVR's
-            ability to reduce catastrophic forgetting (compared to SFT) on some
-            other task it has been trained on?
-            <sup class="footnote-ref"><a href="#footnote-5" id="footnote-ref-5">5</a></sup>
-          </li>
-          <li>
-            Some experiments (not recorded here) on even more extreme sparsity
-            level like 99.9% and 99.95% do not match the full performance. At
-            99.9% the max across steps was about 46% and even less for 99.95%.
-            What's the threshold for the number of parameters here?
-            <sup class="footnote-ref"><a href="#footnote-6" id="footnote-ref-6">6</a></sup>
-          </li>
-          <li>
-            On training dynamics, we also observe different convergence rates.
-            From preliminary experiments, higher learning rates converge faster,
-            at smaller sparsities, but they also become unstable more frequently
-            than other runs as well.
-            <sup class="footnote-ref"><a href="#footnote-7" id="footnote-ref-7">7</a></sup>
-          </li>
-          <li>
-            Do random masks transfer across tasks, or are they task-specific?
-            <sup class="footnote-ref"><a href="#footnote-8" id="footnote-ref-8">8</a></sup>
-          </li>
-          <li>
-            Why exactly do different masks require different optimal learning
-            rates? How do we reason across this in relation to optimization
-            theory specifically?
-          </li>
-        </ul>
+<ul>
+  <li>
+    Does this phenomenon hold for larger models and different (harder) tasks like math, code gen, logical reasoning (or any task that we might want to
+    make the model good at with RLVR)?
+    <sup class="footnote-ref"><a href="#footnote-4" id="footnote-ref-4">4</a></sup>
+  </li>
+  <li>
+    It would seem logical that the parameters being repurposed for task A under a random mask training might be close to optimal for another task B.
+    How does this random mask training affects the RLVR's ability to reduce catastrophic forgetting (compared to SFT) on some other task it has been
+    trained on?
+    <sup class="footnote-ref"><a href="#footnote-5" id="footnote-ref-5">5</a></sup>
+  </li>
+  <li>
+    Some experiments (not recorded here) on even more extreme sparsity level like 99.9% and 99.95% do not match the full performance. At 99.9% the max
+    across steps was about 46% and even less for 99.95%. What's the threshold for the number of parameters here?
+    <sup class="footnote-ref"><a href="#footnote-6" id="footnote-ref-6">6</a></sup>
+  </li>
+  <li>
+    On training dynamics, we also observe different convergence rates. From preliminary experiments, higher learning rates converge faster, at smaller
+    sparsities, but they also become unstable more frequently than other runs as well.
+    <sup class="footnote-ref"><a href="#footnote-7" id="footnote-ref-7">7</a></sup>
+  </li>
+  <li>
+    Do random masks transfer across tasks, or are they task-specific?
+    <sup class="footnote-ref"><a href="#footnote-8" id="footnote-ref-8">8</a></sup>
+  </li>
+  <li>
+    Why exactly do different masks require different optimal learning rates? How do we reason across this in relation to optimization theory
+    specifically?
+  </li>
+</ul>
 
-        <p>
-          Answering these questions requires significantly more compute than we
-          currently have access to. If you're interested in collaborating,
-          mentoring or sponsoring compute, please reach out!!
-        </p>
+<p>
+  Answering these questions requires significantly more compute than we currently have access to. If you're interested in collaborating, mentoring or
+  sponsoring compute, please reach out!!
+</p>
 
-        <h2  id="acknowledgements">Acknowledgements</h2>
-        <ol>
-          <li>
-            I am super grateful to
-            <a href="https://x.com/dayveed_d">Daniel</a> and
-            <a href="https://x.com/andreascoclet1">Andreas</a> for sponsoring
-            compute for the initial experiments as well as asking really
-            insightful questions.
-          </li>
-          <li>
-            PrimeIntellect also cooked with the prime-rl library. It was
-            pleasant to hack around.
-          </li>
-        </ol>
+<h2  id="acknowledgements">Acknowledgements</h2>
+<ol>
+  <li>
+    I am super grateful to
+    <a href="https://x.com/dayveed_d">Daniel</a> and <a href="https://x.com/andreascoclet1">Andreas</a> for sponsoring compute for the initial
+    experiments as well as asking really insightful questions.
+  </li>
+  <li>PrimeIntellect also cooked with the prime-rl library. It was pleasant to hack around.</li>
+</ol>
 
-        <h2  id="citation">Citation</h2>
+<h2  id="citation">Citation</h2>
 
-        <p>If you find this work useful, please cite:</p>
+<p>If you find this work useful, please cite:</p>
 
-        <pre><code>@misc{adewuyi2025lottery,
+<pre><code>@misc{adewuyi2025lottery,
   author = {Adewuyi, Israel},
   title = {Beyond the Lottery Ticket: Multiple Winning Subnetworks in Pretrained LLMs},
   year = {2025},
@@ -444,23 +308,10 @@ for name, param in model.state_dict().items():
   url = {https://israel-adewuyi.github.io/blog/2025/slim-peft/},
   note = {Blog post}
 }</code></pre>
-
-<section class="footnotes"><h2>Footnotes</h2><ol><li id="footnote-1">An auxilliary reason is to solicit for compute resources to scale
-            the experiments up.</li><li id="footnote-2">A justification for this is provided in the paper, but to
-            reiterate, the core intuition here is that the magnitude of $F_i$ is
-            correlated to how important parameter $\theta_i$ is to task
-            represented by D.</li><li id="footnote-3">Some of the runs were cancelled and therefore aren't present
-            because right from the start, the reward and eval curve do not
-            improve and it felt wasteful to continue to burn through compute for
-            results we already could intuit.</li><li id="footnote-4">We suspect it would. It should also be straightforward to
-              investigate this and it would be pleasantly surprising if it
-              doesn't hold.</li><li id="footnote-5">We're inclined to think that it would in some non-trivial way
-              lead to poorer performance on some other previously trained-on
-              task B, but what sort of task B?</li><li id="footnote-6">It's not obvious that more params will equal more performance for
-              the simple reason that using all the params is capped at some
-              level. But at what threshold do we start getting comparable
-              performances?</li><li id="footnote-7">The question to investigate here isn't clearly formulated here,
-              but it was still an interesting observation
-              nonetheless</li><li id="footnote-8">We don't think they are task specific, but we don't also think
-              that the same mask would behave the same across the different
-              training tasks.</li></ol></section><section class="references"><h2>References</h2><ol><li id="reference-1"><span class="reference-index">[1]</span> Shao et al. (2025). <em>Spurious Rewards: Rethinking Training Signals in RLVR</em>. <a href="https://arxiv.org/abs/2506.10947" target="_blank" rel="noreferrer">Open source &nearr;</a></li><li id="reference-2"><span class="reference-index">[2]</span> Wen et al. (2025). <em>Reinforcement Learning with Verifiable Rewards Implicitly Incentivizes Correct Reasoning in Base LLMs</em>. <a href="https://arxiv.org/abs/2506.14245" target="_blank" rel="noreferrer">Open source &nearr;</a></li><li id="reference-3"><span class="reference-index">[3]</span> Yue et al. (2025). <em>Does Reinforcement Learning Really Incentivize Reasoning Capacity in LLMs Beyond the Base Model?</em>. <a href="https://arxiv.org/abs/2504.13837" target="_blank" rel="noreferrer">Open source &nearr;</a></li><li id="reference-4"><span class="reference-index">[4]</span> Mukherjee et al. (2025). <em>Reinforcement Learning Finetunes Small Subnetworks in Large Language Models</em>. <a href="https://arxiv.org/abs/2505.11711" target="_blank" rel="noreferrer">Open source &nearr;</a></li><li id="reference-5"><span class="reference-index">[5]</span> Zhu et al. (2025). <em>The Path Not Taken: RLVR Provably Learns Off the Principals</em>. <a href="https://arxiv.org/abs/2511.08567" target="_blank" rel="noreferrer">Open source &nearr;</a></li><li id="reference-6"><span class="reference-index">[6]</span> Kirkpatrick et al. (2017). <em>Overcoming catastrophic forgetting in neural networks</em>. <a href="http://dx.doi.org/10.1073/pnas.1611835114" target="_blank" rel="noreferrer">Open source &nearr;</a></li><li id="reference-7"><span class="reference-index">[7]</span> Frankle et al. (2019). <em>The Lottery Ticket Hypothesis: Finding Sparse, Trainable Neural Networks</em>. <a href="https://arxiv.org/abs/1803.03635" target="_blank" rel="noreferrer">Open source &nearr;</a></li></ol></section></div></div><footer><span>Research record / 2025</span><a href="mailto:isistickz@gmail.com">Discuss this note &nearr;</a></footer></article></main></div></body></html>
+<section class="footnotes"><h2>Footnotes</h2><ol><li id="footnote-1">An auxilliary reason is to solicit for compute resources to scale the experiments up.</li><li id="footnote-2">A justification for this is provided in the paper, but to reiterate, the core intuition here is that the magnitude of $F_i$ is correlated to how
+    important parameter $\theta_i$ is to task represented by D.</li><li id="footnote-3">Some of the runs were cancelled and therefore aren't present because right from the start, the reward and eval curve do not improve and it felt
+    wasteful to continue to burn through compute for results we already could intuit.</li><li id="footnote-4">We suspect it would. It should also be straightforward to investigate this and it would be pleasantly surprising if it doesn't
+      hold.</li><li id="footnote-5">We're inclined to think that it would in some non-trivial way lead to poorer performance on some other previously trained-on task B, but what
+      sort of task B?</li><li id="footnote-6">It's not obvious that more params will equal more performance for the simple reason that using all the params is capped at some level. But at
+      what threshold do we start getting comparable performances?</li><li id="footnote-7">The question to investigate here isn't clearly formulated here, but it was still an interesting observation nonetheless</li><li id="footnote-8">We don't think they are task specific, but we don't also think that the same mask would behave the same across the different training
+      tasks.</li></ol></section><section class="references"><h2>References</h2><ol><li id="reference-1"><span class="reference-index">[1]</span> Shao et al. (2025). <em>Spurious Rewards: Rethinking Training Signals in RLVR</em>. <a href="https://arxiv.org/abs/2506.10947" target="_blank" rel="noreferrer">Open source &nearr;</a></li><li id="reference-2"><span class="reference-index">[2]</span> Wen et al. (2025). <em>Reinforcement Learning with Verifiable Rewards Implicitly Incentivizes Correct Reasoning in Base LLMs</em>. <a href="https://arxiv.org/abs/2506.14245" target="_blank" rel="noreferrer">Open source &nearr;</a></li><li id="reference-3"><span class="reference-index">[3]</span> Yue et al. (2025). <em>Does Reinforcement Learning Really Incentivize Reasoning Capacity in LLMs Beyond the Base Model?</em>. <a href="https://arxiv.org/abs/2504.13837" target="_blank" rel="noreferrer">Open source &nearr;</a></li><li id="reference-4"><span class="reference-index">[4]</span> Mukherjee et al. (2025). <em>Reinforcement Learning Finetunes Small Subnetworks in Large Language Models</em>. <a href="https://arxiv.org/abs/2505.11711" target="_blank" rel="noreferrer">Open source &nearr;</a></li><li id="reference-5"><span class="reference-index">[5]</span> Zhu et al. (2025). <em>The Path Not Taken: RLVR Provably Learns Off the Principals</em>. <a href="https://arxiv.org/abs/2511.08567" target="_blank" rel="noreferrer">Open source &nearr;</a></li><li id="reference-6"><span class="reference-index">[6]</span> Kirkpatrick et al. (2017). <em>Overcoming catastrophic forgetting in neural networks</em>. <a href="http://dx.doi.org/10.1073/pnas.1611835114" target="_blank" rel="noreferrer">Open source &nearr;</a></li><li id="reference-7"><span class="reference-index">[7]</span> Frankle et al. (2019). <em>The Lottery Ticket Hypothesis: Finding Sparse, Trainable Neural Networks</em>. <a href="https://arxiv.org/abs/1803.03635" target="_blank" rel="noreferrer">Open source &nearr;</a></li></ol></section></div></div><footer><span>Research record / 2025</span><a href="mailto:isistickz@gmail.com">Discuss this note &nearr;</a></footer></article></main></div></body></html>
