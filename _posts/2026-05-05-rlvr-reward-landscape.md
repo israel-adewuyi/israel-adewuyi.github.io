@@ -1,8 +1,8 @@
 ---
 layout: distill
 ledger_published: true
-title: 'RLVR Reward Landscape'
-description: 'zooming into the local reward landscape around a policy'
+title: "RLVR Reward Landscape"
+description: "zooming into the local reward landscape around a policy"
 date: 2026-05-05
 bibliography: rlvr_landscape.bib
 hero_image_scale: "70%"
@@ -42,13 +42,14 @@ toc:
 %}
 
 ## tl,dr
+
 - We study 2-dimensional slices of the parameter space around GRPO checkpoints and compare the local surrogate loss, reward, and KL divergence induced by perturbations of the current policy.
 - We find that high-reward policies occupy a small region of the local slice and are strongly concentrated near the current policy in distribution space, as measured by the KL divergence.
 
 This work is a WIP case study. The goal is to probe one concrete setup and surface hypotheses about local reward geometry that could be tested across more models, tasks, perturbation scales, and seeds.
 
-
 ## Introduction
+
 Reinforcement Learning with Verifiable Rewards (RLVR) is often motivated as a way to improve pretrained large language models (LLMs) on specific tasks through trial-and-error <d-cite key="lambert2025tulu3pushingfrontiers, guo2025deepseek"></d-cite>. In practice, reasoning traces are sampled from the model, graded by a verifier, and the resulting reward signal is used to update the policy <d-footnote>In this work, we use policy interchangeably with the model</d-footnote> toward higher-scoring trajectories.
 
 A growing debate asks whether RLVR finds and elicits new reasoning capabilities from the models or whether it simply reallocates probability mass towards correct reasoning trajectories that were already accessible to the base models <d-cite key="davis2025objectivereasoningreinforcementlearning, yue2025doesreinforcementlearningreally, wen2025reinforcementlearningverifiablerewards"></d-cite>. This becomes a question of exploration versus exploitation i.e does RLVR continue to discover useful new policies, or does it rapidly become a local refinement operator around the current policy? In RL for LLMs, this question is inherently local because practical algorithms constrain updates to a trust region around the current policy. These constraints are motivated by stability and monotonic-improvement guarantees, but they also imply that any meaningful analysis of exploration or exploitation should be framed in terms of the reachable set of nearby policies rather than unconstrained policy space.
@@ -56,7 +57,9 @@ A growing debate asks whether RLVR finds and elicits new reasoning capabilities 
 Most existing analyses study the exploration-exploitation question through output-based evaluations, which reveal what a policy can sample but not how training reshapes the nearby policy landscape. In alignment with this trust region view and inspired by loss landscape visualization methods <d-cite key="li2018visualizinglosslandscapeneural"></d-cite>, we perturb intermediate RLVR checkpoints along 2D slices in parameter space and evaluate the resulting counterfactual policies by rollout reward, surrogate loss, and KL divergence from the original checkpoint. This lets us ask how reward is organized within the local reachable neighborhood of the current policy: do high-reward policies remain spread throughout that neighborhood, or do they instead become concentrated near the current policy in distribution space? Through this lens, we study not only whether RLVR improves reward, but how quickly useful exploration becomes local during training.
 
 ## Methodology
+
 ### Overview
+
 The experiment has two stages. First, we train [**Qwen2.5-0.5B-Instruct**](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct) with GRPO on [**Alphabet-sort**](https://app.primeintellect.ai/dashboard/environments/kalomaze/alphabet-sort), saving intermediate checkpoints throughout training. Second, we freeze each checkpoint and probe a local two-dimensional slice of the surrounding parameter space. Each point in this slice defines a counterfactual nearby policy, which we evaluate by surrogate loss, reward, and KL divergence from the original checkpoint policy.
 
 In this experiment, GRPO refers to the clipped token-level policy-gradient surrogate used during training. For a batch $\mathcal{B}$, let $y_{i}$ be ith sampled completion in the group and let $\hat{A}_{i}$ be the group-relative advantage. With
@@ -65,7 +68,7 @@ $$
 \rho_{i,t}(\theta)
 =
 \frac{\pi_{\text{train}}(y_{i, t} | x, y_{i < t}; \theta)}{\pi_{\text{infer}}(y_{i, t} | x, y_{i < t}; \theta_{old})}
-$$ 
+$$
 
 the GRPO objective used here is
 
@@ -82,6 +85,7 @@ $$
 <!-- The implementation minimizes the corresponding loss $\mathcal{L}_{\mathrm{GRPO}}(\theta; \mathcal{B}) = -J_{\mathrm{GRPO}}(\theta; \mathcal{B})$. -->
 
 ### Training checkpoints
+
 Let $\theta_t$ denote the model parameters during training at step $t$, and let $\pi_{\theta_t}$ denote the corresponding policy. Using GRPO, we update the policy on the Alphabet-sort training environment, where each prompt asks the model to sort an increasing list of names across multiple turns. At a high level, the update takes the form
 
 $$
@@ -95,6 +99,7 @@ where $\omega_t$ is the step size.<d-footnote>In practice, we use AdamW rather t
 We train for 150 steps and save checkpoints every 10 steps and these checkpoints are then treated as fixed objects during landscape construction.
 
 ### Evaluation set construction
+
 For landscape evaluation, we use a fixed prompt set
 
 $$
@@ -104,6 +109,7 @@ $$
 where $N = 1024$. The prompts are sampled from the Alphabet-sort environment. We use the same $\mathcal{D}$ for every checkpoint so that changes in the measured landscapes reflect changes in the policy neighborhood around $\theta_t$, not changes in the evaluation prompts.
 
 ### Landscape construction
+
 To study the local geometry around checkpoint $\theta_t$, we sample two random direction tensors $\delta_t$ and $\eta_t$. Each direction is normalized per weight tensor relative to the corresponding tensor norm in $\theta_t$. For sweep coefficients $(\alpha, \beta)$ on a two-dimensional grid, we define the perturbed parameters
 
 $$
@@ -118,11 +124,12 @@ $$
 
 We evaluate $\pi_t^{(\alpha, \beta)}$ on a $21 \times 21$ grid with $\alpha, \beta \in [-0.05, 0.05]$, giving 441 perturbed policies per checkpoint. For each checkpoint, the sampled directions are fixed across the full grid, and perturbations are applied to all trainable weights. This defines a local two-dimensional parameter-space slice around $\theta_t$.
 
-
 ### Landscape metrics
+
 For each checkpoint $t$ and each grid point $(\alpha, \beta)$, we evaluate three quantities:
 
 <!-- 1. GRPO surrogate loss $J_{\mathrm{GRPO}}(\theta_t^{(\alpha, \beta)})$ with the current policy in place of $\pi_{\text{infer}}$-->
+
 1. GRPO surrogate objective $J_{\mathrm{GRPO}}(\theta_t^{(\alpha,\beta)})$, evaluated on completions sampled from the unperturbed checkpoint policy $\pi_{\theta_t}$ using prompts from the fixed set $\mathcal{D}$;
 
 2. mean rollout reward
@@ -136,6 +143,7 @@ For each checkpoint $t$ and each grid point $(\alpha, \beta)$, we evaluate three
    $$
 
    where $r(x, \pi)$ is the verifier-based reward obtained by rolling out policy $\pi$ on prompt $x$;
+
 3. KL divergence from the checkpoint policy
 
    $$
@@ -390,6 +398,7 @@ Together, these measurements define a local loss, reward, and divergence landsca
 ## Takeaways
 
 ### T1: High-reward policies become concentrated near the current policy.
+
 At each checkpoint $t$, we measure the KL divergence between the current policy and perturbed policy $\theta_t^{(\alpha, \beta)}$, all 441 of them, as well as the reward on $D$. A useful but relatively trivial baseline is that low-KL policies are always concentrated near the current checkpoint - the KL is measured relative to the current policy, so it makes sense that perturbations that leave the policy distribution almost unchanged naturally sit close to $\pi_{\theta_t}$ in distribution space.
 
 The **nontrivial observation** is that reward becomes concentrated around the current checkpoint too! High-reward perturbed policies are not spread uniformly across the local slice. Instead, they tend to appear in the same region where the perturbed policy remains close to the checkpoint distribution.
@@ -413,8 +422,7 @@ We further quantify this alignment between reward and KL by measuring the Pearso
 
 The above observation is interesting as it opens up the question of whether exploration is meant to produce trajectories that are far or close in distribution space. We explore this further in T3.
 
-Which policy the optimizer chooses is another question. 
-
+Which policy the optimizer chooses is another question.
 
 <figure id="fig-corr-t1" class="l-page rlvr-corr-figure">
   <div id="figure-1i-t1-line" class="rlvr-corr-chart"></div>
@@ -424,6 +432,7 @@ Which policy the optimizer chooses is another question.
 </figure>
 
 ### T2: The concentration happens early in the training.
+
 One possible explanation for T1 is that the concentration is just a late-training effect: once the model has already improved, most high-reward perturbations would naturally be small deviations from the current policy. Under this view, the negative KL-reward correlation would mainly appear after the reward landscape has already settled around a strong checkpoint.
 
 This makes the timing important. If localization only appears near the end of training, it would look more like a consequence of convergence. If it appears in the first few updates, then RLVR may be moving the model into a locally favorable region of policy space much earlier than the final reward curve would suggest, analogous to entering a low-loss basin in supervised learning.
@@ -438,15 +447,15 @@ To investigate this, we zoom in on the first 10 training steps. <a href="#fig-co
 </figure>
 
 ### T3: RLVR increasingly behaves like local exploitation around the current policy rather than broad exploration.
+
 A natural reading of T1 and T2 is that RLVR quickly becomes local. High-reward perturbations are not spread broadly across the sampled neighborhood, they are concentrated near the checkpoint policy in KL terms.
 
-How does exploration fit into this? A reasonable conclusion is that the notion of broad exploration over the entire policy space isn't supported by GRPO and by extension, it's derivative algorithms. They seem to rather exploit the local reachable low KL neighbourhood around the current policy. 
+How does exploration fit into this? A reasonable conclusion is that the notion of broad exploration over the entire policy space isn't supported by GRPO and by extension, it's derivative algorithms. They seem to rather exploit the local reachable low KL neighbourhood around the current policy.
 
 The evidence seems to suggest that after a small number of updates, useful exploration may be constrained to a low-KL neighborhood of the current policy. In that sense, RLVR may behave less like broad exploration over policy space and more like exploitation within a locally reachable region.
 
-
-
 ## Limitations
+
 - **2D slices are lossy views of a high-dimensional object.** The landscape is a 2-dimensional slice though a ~490M-dimensional space. This is useful for probing local structure, but it is still an approximation as the slice may miss directions where reward, loss, or KL behave differently.
 
 - **The perturbation scale matters.** The coefficients $\alpha$ and $\beta$ control how far we zoom out from the checkpoint. In early experiments, larger ranges such as $\pm 0.1$ pushed most perturbed policies into regions with zero reward. Much smaller ranges kept policies too close to the checkpoint, producing too little variation in reward and KL. The range $[-0.05, 0.05]$ gave the most useful resolution for this setup, but this scale is a methodological choice that could be tuned further.
@@ -455,55 +464,54 @@ The evidence seems to suggest that after a small number of updates, useful explo
 
 The above factors interact. In early GSM8K experiments with binary rewards on Qwen2.5-0.5B, the same $\pm 0.05$ perturbation range was too zoomed out: most perturbed policies received zero reward. This suggests that model scale, task difficulty, reward granularity, and perturbation scale may all affect the observed local geometry and exploration-exploitation behavior under RLVR.
 
-
 ## Appendix
 
 ### Configuration summary
 
 #### Training configuration
 
-| Component | Value |
-|---|---|
-| Base model | `Qwen/Qwen2.5-0.5B-Instruct` |
-| Training environment | Alphabet-sort with `min_turns = 2`, `max_turns = 2` |
-| RL algorithm | GRPO |
-| Optimizer | AdamW |
-| Learning rate | `6e-6` |
-| Batch size | `512` |
-| Rollouts per example | `16` |
-| Sequence length | `4096` |
-| Sampling max tokens | `128` |
-| Mask truncated completions | `false` |
-| Advantage type | `grpo` |
-| Advantage epsilon | `1e-8` |
-| Loss type | `grpo` |
-| Clip epsilon | `0.2` |
-| KL coefficient | `0.0` |
-| Training steps | `150` |
-| Eval interval | Every `10` steps |
-| Eval examples | `128` |
-| Eval rollouts per example | `1` |
-| Eval environment | Alphabet-sort with `min_turns = 2`, `max_turns = 2`, `seed = 2001` |
-| Eval sampling | `max_tokens = 128`, `temperature = 0.7` |
-| Extra logging interval | Every `30` steps |
-
+| Component                  | Value                                                              |
+| -------------------------- | ------------------------------------------------------------------ |
+| Base model                 | `Qwen/Qwen2.5-0.5B-Instruct`                                       |
+| Training environment       | Alphabet-sort with `min_turns = 2`, `max_turns = 2`                |
+| RL algorithm               | GRPO                                                               |
+| Optimizer                  | AdamW                                                              |
+| Learning rate              | `6e-6`                                                             |
+| Batch size                 | `512`                                                              |
+| Rollouts per example       | `16`                                                               |
+| Sequence length            | `4096`                                                             |
+| Sampling max tokens        | `128`                                                              |
+| Mask truncated completions | `false`                                                            |
+| Advantage type             | `grpo`                                                             |
+| Advantage epsilon          | `1e-8`                                                             |
+| Loss type                  | `grpo`                                                             |
+| Clip epsilon               | `0.2`                                                              |
+| KL coefficient             | `0.0`                                                              |
+| Training steps             | `150`                                                              |
+| Eval interval              | Every `10` steps                                                   |
+| Eval examples              | `128`                                                              |
+| Eval rollouts per example  | `1`                                                                |
+| Eval environment           | Alphabet-sort with `min_turns = 2`, `max_turns = 2`, `seed = 2001` |
+| Eval sampling              | `max_tokens = 128`, `temperature = 0.7`                            |
+| Extra logging interval     | Every `30` steps                                                   |
 
 ### Landscape configuration
 
-| Component | Value |
-|---|---|
-| Evaluation environment | Alphabet-sort |
-| Environment args | `min_turns = 2`, `max_turns = 2`, `seed = 12345` |
-| Buffer seed | `12345` |
-| Batch size | `1024` |
-| Rollouts per example | `16` |
-| Sampling max tokens | `512` |
-| GRPO clip epsilon | `0.2` |
-| Grid range | $\alpha, \beta \in [-0.05, 0.05]$ |
-| Grid resolution | $21 \times 21$ |
-| Metrics | GRPO surrogate loss, rollout reward, KL divergence |
+| Component              | Value                                              |
+| ---------------------- | -------------------------------------------------- |
+| Evaluation environment | Alphabet-sort                                      |
+| Environment args       | `min_turns = 2`, `max_turns = 2`, `seed = 12345`   |
+| Buffer seed            | `12345`                                            |
+| Batch size             | `1024`                                             |
+| Rollouts per example   | `16`                                               |
+| Sampling max tokens    | `512`                                              |
+| GRPO clip epsilon      | `0.2`                                              |
+| Grid range             | $\alpha, \beta \in [-0.05, 0.05]$                  |
+| Grid resolution        | $21 \times 21$                                     |
+| Metrics                | GRPO surrogate loss, rollout reward, KL divergence |
 
 ## Acknowledgment
+
 I am super grateful to Andreas Chollet (for sponsoring compute on this), Daniel David and Professor Ivanov for feedback and insightful questions on earlier drafts of this work.
 
 Prime-Intellect for their easy to use RL library and Qwen team for banger models.

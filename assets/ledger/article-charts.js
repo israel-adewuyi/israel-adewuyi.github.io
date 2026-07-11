@@ -22,7 +22,7 @@
 
     const show = (index) => {
       const point = points[index];
-      const x = left + ((point.step - points[0].step) / ((points.at(-1).step - points[0].step) || 1)) * (right - left);
+      const x = left + ((point.step - points[0].step) / (points.at(-1).step - points[0].step || 1)) * (right - left);
       const y = top + ((0.2 - point.r) / 1.2) * (bottom - top);
       const labelX = x > right - 160 ? x - 150 : x + 12;
       const labelY = Math.max(top + 6, Math.min(bottom - 48, y - 48));
@@ -44,7 +44,14 @@
     const nearest = (event) => {
       const rectangle = chart.getBoundingClientRect();
       const relativeX = ((event.clientX - rectangle.left) / rectangle.width) * chart.viewBox.baseVal.width;
-      return points.reduce((closest, point, index) => Math.abs((left + ((point.step - points[0].step) / ((points.at(-1).step - points[0].step) || 1)) * (right - left)) - relativeX) < Math.abs((left + ((points[closest].step - points[0].step) / ((points.at(-1).step - points[0].step) || 1)) * (right - left)) - relativeX) ? index : closest, 0);
+      return points.reduce(
+        (closest, point, index) =>
+          Math.abs(left + ((point.step - points[0].step) / (points.at(-1).step - points[0].step || 1)) * (right - left) - relativeX) <
+          Math.abs(left + ((points[closest].step - points[0].step) / (points.at(-1).step - points[0].step || 1)) * (right - left) - relativeX)
+            ? index
+            : closest,
+        0
+      );
     };
 
     chart.addEventListener("pointermove", (event) => show(nearest(event)));

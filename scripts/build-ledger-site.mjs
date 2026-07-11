@@ -9,22 +9,56 @@ const ledgerDirectory = resolve(root, "assets", "ledger");
 const assetVersion = Date.now().toString(36);
 
 const existingPostDetails = {
-  "rlvr-reward-landscape": { topic: "Reinforcement learning", image: "rlvr_landscape/rlvr_reward_landscape.png", caption: "A local two-dimensional tangent slice around a policy trained with GRPO." },
-  "slim-peft": { topic: "Reinforcement learning / Finetuning", image: "rl_subnet_1/fft_fisher.png", caption: "Sparse parameter-selection experiments during RL finetuning." },
-  "attn_sink_evidence": { topic: "Mechanistic interpretability", image: "resid_stream_with_attn_mlp.png", caption: "The residual stream: the common pathway through a transformer block." },
-  "ner_with_rl": { topic: "Reinforcement learning", image: "graphrag/pipeline.png", caption: "The project treats structured extraction as a reward-design problem." },
-  "replicating-graphrag": { topic: "Retrieval systems", image: "graphrag/pipeline.png", caption: "A GraphRAG pipeline from source documents to graph-based query answers." },
-  "replicating-refusal": { topic: "Mechanistic interpretability", image: "refusal_replication/2-2b_resid_attrib_plot.png", caption: "Residual-stream attribution measured across layers in a Gemma 2 model." }
+  "rlvr-reward-landscape": {
+    topic: "Reinforcement learning",
+    image: "rlvr_landscape/rlvr_reward_landscape.png",
+    caption: "A local two-dimensional tangent slice around a policy trained with GRPO.",
+  },
+  "slim-peft": {
+    topic: "Reinforcement learning / Finetuning",
+    image: "rl_subnet_1/fft_fisher.png",
+    caption: "Sparse parameter-selection experiments during RL finetuning.",
+  },
+  attn_sink_evidence: {
+    topic: "Mechanistic interpretability",
+    image: "resid_stream_with_attn_mlp.png",
+    caption: "The residual stream: the common pathway through a transformer block.",
+  },
+  ner_with_rl: {
+    topic: "Reinforcement learning",
+    image: "graphrag/pipeline.png",
+    caption: "The project treats structured extraction as a reward-design problem.",
+  },
+  "replicating-graphrag": {
+    topic: "Retrieval systems",
+    image: "graphrag/pipeline.png",
+    caption: "A GraphRAG pipeline from source documents to graph-based query answers.",
+  },
+  "replicating-refusal": {
+    topic: "Mechanistic interpretability",
+    image: "refusal_replication/2-2b_resid_attrib_plot.png",
+    caption: "Residual-stream attribution measured across layers in a Gemma 2 model.",
+  },
 };
 
 const pageRoutes = {
-  home: "/", research: "/research/", writing: "/writing/", publications: "/publications/", about: "/about/", cv: "/cv/"
+  home: "/",
+  research: "/research/",
+  writing: "/writing/",
+  publications: "/publications/",
+  about: "/about/",
+  cv: "/cv/",
 };
 const correlationData = JSON.parse(await readFile(resolve(root, "assets", "json", "rlvr_landscape", "correlations.json"), "utf8"));
 
-const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
+const escapeHtml = (value) =>
+  String(value).replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
 const escapeAttribute = escapeHtml;
-const cleanValue = (value = "") => value.trim().replace(/^['"]|['"]$/g, "").replace(/''/g, "'");
+const cleanValue = (value = "") =>
+  value
+    .trim()
+    .replace(/^['"]|['"]$/g, "")
+    .replace(/''/g, "'");
 const citeTagPattern = /<d-cite\b([^>]*)>[\s\S]*?<\/d-cite\s*>/gi;
 const footnoteTagPattern = /<d-footnote\b[^>]*>([\s\S]*?)<\/d-footnote\s*>/gi;
 
@@ -60,10 +94,10 @@ function renderMarkdown(source, cite, footnote) {
     .replace(/<script[\s\S]*?<\/script\s*>/gi, "")
     .replace(/\{\{\s*['"]([^'"]+)['"]\s*\|\s*relative_url\s*\}\}/g, "$1")
     .replace(/\{%\s*include\s+figure\.liquid([\s\S]*?)%\}/g, (_, attributes) => {
-    const path = attributes.match(/path="([^"]+)"/)?.[1] || "";
-    const alt = attributes.match(/alt="([^"]+)"/)?.[1] || "";
-    return `<figure><img src="/${path.replace(/^\//, "")}" alt="${escapeAttribute(alt)}" /><figcaption>${escapeHtml(alt)}</figcaption></figure>`;
-  });
+      const path = attributes.match(/path="([^"]+)"/)?.[1] || "";
+      const alt = attributes.match(/alt="([^"]+)"/)?.[1] || "";
+      return `<figure><img src="/${path.replace(/^\//, "")}" alt="${escapeAttribute(alt)}" /><figcaption>${escapeHtml(alt)}</figcaption></figure>`;
+    });
   const lines = prepared.split(/\r?\n/);
   const output = [];
   let paragraph = [];
@@ -75,49 +109,153 @@ function renderMarkdown(source, cite, footnote) {
   let rawBlockTag = "";
   let inCode = false;
   let inEquation = false;
-  const flushParagraph = () => { if (paragraph.length) { output.push(`<p>${renderInline(paragraph.join(" "), cite, footnote)}</p>`); paragraph = []; } };
-  const flushList = () => { if (list.length) { output.push(`<ul>${list.map((item) => `<li>${renderInline(item, cite, footnote)}</li>`).join("")}</ul>`); list = []; } };
-  const flushCode = () => { if (code.length) { output.push(`<pre><code>${escapeHtml(code.join("\n"))}</code></pre>`); code = []; } };
-  const flushEquation = () => { if (equation.length) { output.push(`<div class="equation">$$${escapeHtml(equation.join("\n"))}$$</div>`); equation = []; } };
-  const tableCells = (line) => line.trim().replace(/^\||\|$/g, "").split("|").map((cell) => cell.trim());
+  const flushParagraph = () => {
+    if (paragraph.length) {
+      output.push(`<p>${renderInline(paragraph.join(" "), cite, footnote)}</p>`);
+      paragraph = [];
+    }
+  };
+  const flushList = () => {
+    if (list.length) {
+      output.push(`<ul>${list.map((item) => `<li>${renderInline(item, cite, footnote)}</li>`).join("")}</ul>`);
+      list = [];
+    }
+  };
+  const flushCode = () => {
+    if (code.length) {
+      output.push(`<pre><code>${escapeHtml(code.join("\n"))}</code></pre>`);
+      code = [];
+    }
+  };
+  const flushEquation = () => {
+    if (equation.length) {
+      output.push(`<div class="equation">$$${escapeHtml(equation.join("\n"))}$$</div>`);
+      equation = [];
+    }
+  };
+  const tableCells = (line) =>
+    line
+      .trim()
+      .replace(/^\||\|$/g, "")
+      .split("|")
+      .map((cell) => cell.trim());
   const flushTable = () => {
     if (!table.length) return;
     const rows = table.map(tableCells);
     const separator = rows[1]?.every((cell) => /^:?-{3,}:?$/.test(cell));
     const headers = rows[0] || [];
     const body = rows.slice(separator ? 2 : 1);
-    output.push(`<table><thead><tr>${headers.map((cell) => `<th>${renderInline(cell, cite, footnote)}</th>`).join("")}</tr></thead><tbody>${body.map((row) => `<tr>${row.map((cell) => `<td>${renderInline(cell, cite, footnote)}</td>`).join("")}</tr>`).join("")}</tbody></table>`);
+    output.push(
+      `<table><thead><tr>${headers.map((cell) => `<th>${renderInline(cell, cite, footnote)}</th>`).join("")}</tr></thead><tbody>${body
+        .map((row) => `<tr>${row.map((cell) => `<td>${renderInline(cell, cite, footnote)}</td>`).join("")}</tr>`)
+        .join("")}</tbody></table>`
+    );
     table = [];
   };
-  const flushRawBlock = () => { if (rawBlock.length) { output.push(normaliseHtml(rawBlock.join("\n"), cite, footnote)); rawBlock = []; rawBlockTag = ""; } };
+  const flushRawBlock = () => {
+    if (rawBlock.length) {
+      output.push(normaliseHtml(rawBlock.join("\n"), cite, footnote));
+      rawBlock = [];
+      rawBlockTag = "";
+    }
+  };
   for (const line of lines) {
     if (rawBlockTag) {
       rawBlock.push(line);
       if (new RegExp(`</${rawBlockTag}\\s*>`, "i").test(line)) flushRawBlock();
       continue;
     }
-    if (line.trim().startsWith("```")) { if (inCode) { flushCode(); inCode = false; } else { flushParagraph(); flushList(); flushTable(); inCode = true; } continue; }
-    if (inCode) { code.push(line); continue; }
-    if (line.trim() === "$$") { if (inEquation) { flushEquation(); inEquation = false; } else { flushParagraph(); flushList(); flushTable(); inEquation = true; } continue; }
-    if (inEquation) { equation.push(line); continue; }
-    if (!line.trim()) { flushParagraph(); flushList(); flushTable(); continue; }
-    if (/^\s*\|.*\|\s*$/.test(line)) { flushParagraph(); flushList(); table.push(line); continue; }
-    const heading = line.match(/^(#{2,4})\s+(.+)$/);
-    if (heading) { flushParagraph(); flushList(); flushTable(); const level = heading[1].length; output.push(`<h${level}>${renderInline(heading[2], cite, footnote)}</h${level}>`); continue; }
-    const bullet = line.match(/^\s*[-*]\s+(.+)$/);
-    if (bullet) { flushParagraph(); flushTable(); list.push(bullet[1]); continue; }
-    const rawTag = line.trim().match(/^<(figure|table|div|details|blockquote|section)\b/i)?.[1]?.toLowerCase();
-    if (rawTag) {
-      flushParagraph(); flushList(); flushTable();
-      if (new RegExp(`</${rawTag}\\s*>`, "i").test(line)) output.push(normaliseHtml(line, cite, footnote));
-      else { rawBlock = [line]; rawBlockTag = rawTag; }
+    if (line.trim().startsWith("```")) {
+      if (inCode) {
+        flushCode();
+        inCode = false;
+      } else {
+        flushParagraph();
+        flushList();
+        flushTable();
+        inCode = true;
+      }
       continue;
     }
-    if (/^<[^>]+>/.test(line.trim())) { flushParagraph(); flushList(); flushTable(); output.push(normaliseHtml(line, cite, footnote)); continue; }
+    if (inCode) {
+      code.push(line);
+      continue;
+    }
+    if (line.trim() === "$$") {
+      if (inEquation) {
+        flushEquation();
+        inEquation = false;
+      } else {
+        flushParagraph();
+        flushList();
+        flushTable();
+        inEquation = true;
+      }
+      continue;
+    }
+    if (inEquation) {
+      equation.push(line);
+      continue;
+    }
+    if (!line.trim()) {
+      flushParagraph();
+      flushList();
+      flushTable();
+      continue;
+    }
+    if (/^\s*\|.*\|\s*$/.test(line)) {
+      flushParagraph();
+      flushList();
+      table.push(line);
+      continue;
+    }
+    const heading = line.match(/^(#{2,4})\s+(.+)$/);
+    if (heading) {
+      flushParagraph();
+      flushList();
+      flushTable();
+      const level = heading[1].length;
+      output.push(`<h${level}>${renderInline(heading[2], cite, footnote)}</h${level}>`);
+      continue;
+    }
+    const bullet = line.match(/^\s*[-*]\s+(.+)$/);
+    if (bullet) {
+      flushParagraph();
+      flushTable();
+      list.push(bullet[1]);
+      continue;
+    }
+    const rawTag = line
+      .trim()
+      .match(/^<(figure|table|div|details|blockquote|section)\b/i)?.[1]
+      ?.toLowerCase();
+    if (rawTag) {
+      flushParagraph();
+      flushList();
+      flushTable();
+      if (new RegExp(`</${rawTag}\\s*>`, "i").test(line)) output.push(normaliseHtml(line, cite, footnote));
+      else {
+        rawBlock = [line];
+        rawBlockTag = rawTag;
+      }
+      continue;
+    }
+    if (/^<[^>]+>/.test(line.trim())) {
+      flushParagraph();
+      flushList();
+      flushTable();
+      output.push(normaliseHtml(line, cite, footnote));
+      continue;
+    }
     flushTable();
     paragraph.push(line.trim());
   }
-  flushParagraph(); flushList(); flushTable(); flushCode(); flushEquation(); flushRawBlock();
+  flushParagraph();
+  flushList();
+  flushTable();
+  flushCode();
+  flushEquation();
+  flushRawBlock();
   return output.join("\n");
 }
 
@@ -155,7 +293,10 @@ function citationKeys(source) {
   const keys = [];
   for (const match of source.matchAll(citeTagPattern)) {
     const raw = match[1].match(/\bkey="([^"]+)"/)?.[1] || "";
-    for (const key of raw.split(",").map((item) => item.trim()).filter(Boolean)) {
+    for (const key of raw
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean)) {
       if (!keys.includes(key)) keys.push(key);
     }
   }
@@ -164,24 +305,32 @@ function citationKeys(source) {
 
 function bibliographyHtml(keys, entries) {
   if (!keys.length) return "";
-  const references = keys.map((key, index) => {
-    const entry = entries.get(key) || {};
-    const label = `${authorLabel(entry.author)} (${entry.year || "n.d."}).`;
-    const title = entry.title ? ` <em>${escapeHtml(entry.title)}</em>.` : "";
-    const destination = entry.url || (entry.doi ? `https://doi.org/${entry.doi}` : "");
-    const source = destination ? ` <a href="${escapeAttribute(destination)}" target="_blank" rel="noreferrer">Open source &nearr;</a>` : "";
-    return `<li id="reference-${index + 1}"><span class="reference-index">[${index + 1}]</span> ${escapeHtml(label)}${title}${source}</li>`;
-  }).join("");
+  const references = keys
+    .map((key, index) => {
+      const entry = entries.get(key) || {};
+      const label = `${authorLabel(entry.author)} (${entry.year || "n.d."}).`;
+      const title = entry.title ? ` <em>${escapeHtml(entry.title)}</em>.` : "";
+      const destination = entry.url || (entry.doi ? `https://doi.org/${entry.doi}` : "");
+      const source = destination ? ` <a href="${escapeAttribute(destination)}" target="_blank" rel="noreferrer">Open source &nearr;</a>` : "";
+      return `<li id="reference-${index + 1}"><span class="reference-index">[${index + 1}]</span> ${escapeHtml(label)}${title}${source}</li>`;
+    })
+    .join("");
   return `<section class="references"><h2>References</h2><ol>${references}</ol></section>`;
 }
 
 function footnotesHtml(notes) {
   if (!notes.length) return "";
-  return `<section class="footnotes"><h2>Footnotes</h2><ol>${notes.map((note, index) => `<li id="footnote-${index + 1}">${note}</li>`).join("")}</ol></section>`;
+  return `<section class="footnotes"><h2>Footnotes</h2><ol>${notes
+    .map((note, index) => `<li id="footnote-${index + 1}">${note}</li>`)
+    .join("")}</ol></section>`;
 }
 
 function headingText(value) {
-  return value.replace(/<[^>]*>/g, "").replace(/&(?:amp|lt|gt|quot|#39);/g, " ").replace(/\s+/g, " ").trim();
+  return value
+    .replace(/<[^>]*>/g, "")
+    .replace(/&(?:amp|lt|gt|quot|#39);/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function articleContents(body) {
@@ -190,34 +339,47 @@ function articleContents(body) {
   const withIds = body.replace(/<h([2-4])([^>]*)>([\s\S]*?)<\/h\1>/gi, (_, level, attributes, content) => {
     const text = headingText(content);
     const currentId = attributes.match(/\bid="([^"]+)"/i)?.[1];
-    const base = (currentId || text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "section");
+    const base =
+      currentId ||
+      text
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "") ||
+      "section";
     let id = base;
     let suffix = 2;
     while (used.has(id)) id = `${base}-${suffix++}`;
     used.add(id);
-    const nextAttributes = currentId
-      ? attributes.replace(/\bid="[^"]+"/i, ` id="${id}"`)
-      : `${attributes} id="${id}"`;
+    const nextAttributes = currentId ? attributes.replace(/\bid="[^"]+"/i, ` id="${id}"`) : `${attributes} id="${id}"`;
     entries.push({ level: Number(level), id, text });
     return `<h${level}${nextAttributes}>${content}</h${level}>`;
   });
   if (!entries.length) return { body: withIds, toc: "" };
   const counts = { 2: 0, 3: 0, 4: 0 };
-  const links = entries.map((entry) => {
-    if (entry.level === 2) {
-      counts[2] += 1;
-      counts[3] = 0;
-      counts[4] = 0;
-    } else if (entry.level === 3) {
-      counts[3] += 1;
-      counts[4] = 0;
-    } else {
-      counts[4] += 1;
-    }
-    const primary = String(Math.max(counts[2], 1)).padStart(2, "0");
-    const number = entry.level === 2 ? primary : entry.level === 3 ? `${primary}.${String(counts[3]).padStart(2, "0")}` : `${primary}.${String(Math.max(counts[3], 1)).padStart(2, "0")}.${String(counts[4]).padStart(2, "0")}`;
-    return `<a class="${entry.level > 2 ? "toc-subsection" : ""}" href="#${escapeAttribute(entry.id)}"><span>${number}</span> ${escapeHtml(entry.text)}</a>`;
-  }).join("");
+  const links = entries
+    .map((entry) => {
+      if (entry.level === 2) {
+        counts[2] += 1;
+        counts[3] = 0;
+        counts[4] = 0;
+      } else if (entry.level === 3) {
+        counts[3] += 1;
+        counts[4] = 0;
+      } else {
+        counts[4] += 1;
+      }
+      const primary = String(Math.max(counts[2], 1)).padStart(2, "0");
+      const number =
+        entry.level === 2
+          ? primary
+          : entry.level === 3
+            ? `${primary}.${String(counts[3]).padStart(2, "0")}`
+            : `${primary}.${String(Math.max(counts[3], 1)).padStart(2, "0")}.${String(counts[4]).padStart(2, "0")}`;
+      return `<a class="${entry.level > 2 ? "toc-subsection" : ""}" href="#${escapeAttribute(entry.id)}"><span>${number}</span> ${escapeHtml(
+        entry.text
+      )}</a>`;
+    })
+    .join("");
   return { body: withIds, toc: `<aside class="ledger-article-toc" aria-label="Contents"><span>Contents</span>${links}</aside>` };
 }
 
@@ -240,11 +402,30 @@ function staticCorrelationChart(seriesId, title) {
   const path = points.map((point) => `${x(point.step).toFixed(1)},${y(point.r).toFixed(1)}`).join(" ");
   const yTicks = [-1, -0.75, -0.5, -0.25, 0];
   const xTicks = seriesId === "Early_localization" ? [0, 2, 4, 6, 8, 10] : [0, 30, 60, 90, 120, 150];
-  const grid = yTicks.map((tick) => `<line x1="${left}" x2="${width - right}" y1="${y(tick)}" y2="${y(tick)}" stroke="#c7c5ba" stroke-width="1" ${tick === 0 ? "stroke-dasharray=\"4 4\"" : ""}/><text x="${left - 10}" y="${y(tick) + 4}" text-anchor="end" fill="#73736b" font-size="11">${tick}</text>`).join("");
-  const ticks = xTicks.map((tick) => `<text x="${x(tick)}" y="${height - 25}" text-anchor="middle" fill="#73736b" font-size="11">${tick}</text>`).join("");
+  const grid = yTicks
+    .map(
+      (tick) =>
+        `<line x1="${left}" x2="${width - right}" y1="${y(tick)}" y2="${y(tick)}" stroke="#c7c5ba" stroke-width="1" ${
+          tick === 0 ? 'stroke-dasharray="4 4"' : ""
+        }/><text x="${left - 10}" y="${y(tick) + 4}" text-anchor="end" fill="#73736b" font-size="11">${tick}</text>`
+    )
+    .join("");
+  const ticks = xTicks
+    .map((tick) => `<text x="${x(tick)}" y="${height - 25}" text-anchor="middle" fill="#73736b" font-size="11">${tick}</text>`)
+    .join("");
   const dots = points.map((point) => `<circle cx="${x(point.step)}" cy="${y(point.r)}" r="3.5" fill="#c7422a"/>`).join("");
   const interactionData = escapeAttribute(JSON.stringify(points.map(({ step, r }) => ({ step, r }))));
-  return `<svg class="static-chart interactive-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeAttribute(title)}. Hover or focus the chart to inspect values." tabindex="0" data-chart-points="${interactionData}" data-chart-bounds="${left},${top},${width - right},${height - bottom}"><text x="${left}" y="18" fill="#20211e" font-size="13" font-family="Arial, sans-serif">${escapeHtml(title)}</text>${grid}<polyline fill="none" stroke="#1648b8" stroke-width="3" points="${path}"/>${dots}${ticks}<text x="${width / 2}" y="${height - 6}" text-anchor="middle" fill="#73736b" font-size="11">Training step</text><text x="17" y="${height / 2}" transform="rotate(-90 17 ${height / 2})" text-anchor="middle" fill="#73736b" font-size="11">Pearson correlation</text></svg>`;
+  return `<svg class="static-chart interactive-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeAttribute(
+    title
+  )}. Hover or focus the chart to inspect values." tabindex="0" data-chart-points="${interactionData}" data-chart-bounds="${left},${top},${
+    width - right
+  },${height - bottom}"><text x="${left}" y="18" fill="#20211e" font-size="13" font-family="Arial, sans-serif">${escapeHtml(
+    title
+  )}</text>${grid}<polyline fill="none" stroke="#1648b8" stroke-width="3" points="${path}"/>${dots}${ticks}<text x="${width / 2}" y="${
+    height - 6
+  }" text-anchor="middle" fill="#73736b" font-size="11">Training step</text><text x="17" y="${height / 2}" transform="rotate(-90 17 ${
+    height / 2
+  })" text-anchor="middle" fill="#73736b" font-size="11">Pearson correlation</text></svg>`;
 }
 
 function formatDate(value) {
@@ -252,11 +433,27 @@ function formatDate(value) {
 }
 
 function staticPage(page, title) {
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>${escapeHtml(title)} - Israel Adewuyi</title><link rel="stylesheet" href="/assets/ledger/site-common.css?v=${assetVersion}" /><link rel="stylesheet" href="/assets/ledger/style.css?v=${assetVersion}" /></head><body data-variant="ledger" data-page="${page}" data-asset-root="/assets/img/"><a class="skip-link" href="#app">Skip to content</a><div id="app"></div><script src="/assets/ledger/routes.js?v=${assetVersion}"></script><script src="/assets/ledger/posts.js?v=${assetVersion}"></script><script src="/assets/ledger/content.js?v=${assetVersion}"></script><script src="/assets/ledger/site-runtime.js?v=${assetVersion}"></script></body></html>`;
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>${escapeHtml(
+    title
+  )} - Israel Adewuyi</title><link rel="stylesheet" href="/assets/ledger/site-common.css?v=${assetVersion}" /><link rel="stylesheet" href="/assets/ledger/style.css?v=${assetVersion}" /></head><body data-variant="ledger" data-page="${page}" data-asset-root="/assets/img/"><a class="skip-link" href="#app">Skip to content</a><div id="app"></div><script src="/assets/ledger/routes.js?v=${assetVersion}"></script><script src="/assets/ledger/posts.js?v=${assetVersion}"></script><script src="/assets/ledger/content.js?v=${assetVersion}"></script><script src="/assets/ledger/site-runtime.js?v=${assetVersion}"></script></body></html>`;
 }
 
 function articlePage(post, body, toc, references, footnotes) {
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><meta name="description" content="${escapeAttribute(post.description)}" /><title>${escapeHtml(post.title)} - Israel Adewuyi</title><link rel="stylesheet" href="/assets/ledger/site-common.css" /><link rel="stylesheet" href="/assets/ledger/style.css" /><link rel="stylesheet" href="/assets/ledger/post.css" /><script>window.MathJax={tex:{inlineMath:[['$','$'],['\\\\(','\\\\)']],displayMath:[['$$','$$'],['\\\\[','\\\\]']]}};</script><script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script><script defer src="/assets/ledger/article-charts.js"></script></head><body><a class="skip-link" href="#article">Skip to article</a><div class="ledger-post-shell"><aside class="ledger-post-rail"><a class="ledger-post-name" href="/">Israel Adewuyi</a><span>Research ledger / 2024-present</span><nav aria-label="Primary navigation"><a href="/"><span>01</span>Home</a><a href="/research/"><span>02</span>Research</a><a href="/publications/"><span>03</span>Publications</a><a href="/about/"><span>04</span>About</a><a href="/cv/"><span>05</span>Profile</a></nav><p>Research record<br />${escapeHtml(post.date.replaceAll("-", "."))}</p></aside><main class="ledger-post-main" id="article"><div class="ledger-post-top"><span>Research archive / ${escapeHtml(post.topic)}</span><a href="/research/">Back to research</a></div><article class="ledger-post"><header><p class="ledger-post-prompt">$ open ./research/${escapeHtml(post.slug)}</p><p class="ledger-post-meta">${formatDate(post.date)} / ${escapeHtml(post.description)}</p><h1>${escapeHtml(post.title)}</h1></header><div class="ledger-article-layout">${toc}<div class="ledger-post-body">${body}${footnotes}${references}</div></div><footer><span>Research record / ${escapeHtml(post.date.slice(0, 4))}</span><a href="mailto:isistickz@gmail.com">Discuss this note &nearr;</a></footer></article></main></div></body></html>`;
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><meta name="description" content="${escapeAttribute(
+    post.description
+  )}" /><title>${escapeHtml(
+    post.title
+  )} - Israel Adewuyi</title><link rel="stylesheet" href="/assets/ledger/site-common.css" /><link rel="stylesheet" href="/assets/ledger/style.css" /><link rel="stylesheet" href="/assets/ledger/post.css" /><script>window.MathJax={tex:{inlineMath:[['$','$'],['\\\\(','\\\\)']],displayMath:[['$$','$$'],['\\\\[','\\\\]']]}};</script><script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script><script defer src="/assets/ledger/article-charts.js"></script></head><body><a class="skip-link" href="#article">Skip to article</a><div class="ledger-post-shell"><aside class="ledger-post-rail"><a class="ledger-post-name" href="/">Israel Adewuyi</a><span>Research ledger / 2024-present</span><nav aria-label="Primary navigation"><a href="/"><span>01</span>Home</a><a href="/research/"><span>02</span>Research</a><a href="/publications/"><span>03</span>Publications</a><a href="/about/"><span>04</span>About</a><a href="/cv/"><span>05</span>Profile</a></nav><p>Research record<br />${escapeHtml(
+    post.date.replaceAll("-", ".")
+  )}</p></aside><main class="ledger-post-main" id="article"><div class="ledger-post-top"><span>Research archive / ${escapeHtml(
+    post.topic
+  )}</span><a href="/research/">Back to research</a></div><article class="ledger-post"><header><p class="ledger-post-prompt">$ open ./research/${escapeHtml(
+    post.slug
+  )}</p><p class="ledger-post-meta">${formatDate(post.date)} / ${escapeHtml(post.description)}</p><h1>${escapeHtml(
+    post.title
+  )}</h1></header><div class="ledger-article-layout">${toc}<div class="ledger-post-body">${body}${footnotes}${references}</div></div><footer><span>Research record / ${escapeHtml(
+    post.date.slice(0, 4)
+  )}</span><a href="mailto:isistickz@gmail.com">Discuss this note &nearr;</a></footer></article></main></div></body></html>`;
 }
 
 const entries = await readdir(postsDirectory, { withFileTypes: true });
@@ -281,16 +478,38 @@ for (const entry of entries) {
     caption: fields.caption || details.caption || "",
     bibliography: fields.bibliography || "",
     sourceType: extname(entry.name),
-    body
+    body,
   });
 }
 
 posts.sort((left, right) => right.date.localeCompare(left.date));
 await mkdir(ledgerDirectory, { recursive: true });
-await writeFile(resolve(ledgerDirectory, "posts.js"), `window.ledgerPosts = ${JSON.stringify(posts.map(({ body, sourceType, ...post }) => post), null, 2)};\n`);
-await writeFile(resolve(ledgerDirectory, "routes.js"), `window.siteRoutes = ${JSON.stringify(pageRoutes, null, 2)};\nwindow.siteArticleRoutes = ${JSON.stringify(Object.fromEntries(posts.map((post) => [post.slug, `/blog/${post.date.slice(0, 4)}/${post.slug}/`])), null, 2)};\n`);
+await writeFile(
+  resolve(ledgerDirectory, "posts.js"),
+  `window.ledgerPosts = ${JSON.stringify(
+    posts.map(({ body, sourceType, ...post }) => post),
+    null,
+    2
+  )};\n`
+);
+await writeFile(
+  resolve(ledgerDirectory, "routes.js"),
+  `window.siteRoutes = ${JSON.stringify(pageRoutes, null, 2)};\nwindow.siteArticleRoutes = ${JSON.stringify(
+    Object.fromEntries(posts.map((post) => [post.slug, `/blog/${post.date.slice(0, 4)}/${post.slug}/`])),
+    null,
+    2
+  )};\n`
+);
 
-for (const [path, page, title] of [["index.html", "home", "Israel Adewuyi"], ["research/index.html", "research", "Research"], ["writing/index.html", "research", "Research"], ["publications/index.html", "publications", "Publications"], ["about/index.html", "about", "About"], ["cv/index.html", "cv", "Profile"], ["blog/index.html", "research", "Research"]]) {
+for (const [path, page, title] of [
+  ["index.html", "home", "Israel Adewuyi"],
+  ["research/index.html", "research", "Research"],
+  ["writing/index.html", "research", "Research"],
+  ["publications/index.html", "publications", "Publications"],
+  ["about/index.html", "about", "About"],
+  ["cv/index.html", "cv", "Profile"],
+  ["blog/index.html", "research", "Research"],
+]) {
   const destination = resolve(root, path);
   await mkdir(resolve(destination, ".."), { recursive: true });
   await writeFile(destination, staticPage(page, title));
@@ -308,8 +527,13 @@ for (const post of posts) {
   const index = new Map(keys.map((key, position) => [key, position + 1]));
   const notes = [];
   const cite = (raw) => {
-    const values = raw.split(",").map((key) => key.trim()).filter(Boolean);
-    return values.length ? `[${values.map((key) => `<a class="citation" href="#reference-${index.get(key) || "?"}">${index.get(key) || "?"}</a>`).join(", ")}]` : "";
+    const values = raw
+      .split(",")
+      .map((key) => key.trim())
+      .filter(Boolean);
+    return values.length
+      ? `[${values.map((key) => `<a class="citation" href="#reference-${index.get(key) || "?"}">${index.get(key) || "?"}</a>`).join(", ")}]`
+      : "";
   };
   const footnote = (note) => {
     const number = notes.push(note.trim());

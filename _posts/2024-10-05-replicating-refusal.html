@@ -1,230 +1,187 @@
 ﻿---
 layout: distill
 ledger_published: true
-title: 'Replicating ''Refusal Mechanism'''
-description: 'a replication of the initial experiments on the ''Refusal Mechanism'''
+title: "Replicating 'Refusal Mechanism'"
+description: "a replication of the initial experiments on the 'Refusal Mechanism'"
 date: 2024-10-05
 bibliography: refusal.bib
 ---
 
 <d-contents>
-          <nav class="l-text figcaption">
-            <h3>Contents</h3>
-            <div><a href="#background">Background</a></div>
-            <div><a href="#summary">Summary</a></div>
-            <div><a href="#setup">Setup</a></div>
-            <div><a href="#results1">Results with Gemma 2-2B</a></div>
-            <!-- <ul>
+  <nav class="l-text figcaption">
+    <h3>Contents</h3>
+    <div><a href="#background">Background</a></div>
+    <div><a href="#summary">Summary</a></div>
+    <div><a href="#setup">Setup</a></div>
+    <div><a href="#results1">Results with Gemma 2-2B</a></div>
+    <!-- <ul>
               <li><a href="#results1-subsection1">Re</a></li>
               <li><a href="#results1-subsection2">Subsection 2</a></li>
             </ul> -->
-            <div><a href="#results2">Results with Gemma 2-9B</a></div>
-            <!-- <div><a href="#footnotes">Code Blocks</a></div>
+    <div><a href="#results2">Results with Gemma 2-9B</a></div>
+    <!-- <div><a href="#footnotes">Code Blocks</a></div>
             <div><a href="#interactive-plots">Interactive Plots</a></div>
             <div><a href="#layouts">Layouts</a></div>
             <div><a href="#other-typography">Other Typography?</a></div> -->
-          </nav>
-        </d-contents>
-        <h2 id="background">Background</h2>
-        <p>
-          This post represents a step towards my understanding of model
-          behaviour and how to align LLMs with our interests. When I first read
-          the blog, it seemed approachable on the surface level, I felt I could
-          track what the author was doing as well as their motivations and it
-          felt like a good experiment to try and replicate.
-        </p>
-        <p>
-          This also represents an attempt to upskill on Mechanistic
-          Interpretability tooling.
-        </p>
-        <p>
-          This post is based on <d-cite key="andy_refusal"></d-cite>. If you
-          need a more indepth explanation, or a refresher, I suggest the reader
-          goes through the blog and return, because this writeup just summarises
-          my findings and assumes the reader is familiar with mech
-          interp-related terms.
-        </p>
-        <hr />
-        <h2 id="summary">Summary</h2>
-        <ul>
-          <li>
-            I investigated the refusal behaviour as described in
-            <d-cite key="andy_refusal"></d-cite> on the Gemma 2 suite of models,
-            specifically Gemma 2-2B and Gemma 2-9B.
-          </li>
-          <li>
-            I couldn't steer with the refusal heads contribution with Gemma
-            2-2B.
-          </li>
-          <li>
-            I could steer with the refusal heads contribution with Gemma 2-9B,
-            albeit with a significant increase in the scaling factor, &gt; 26x.
-          </li>
-          <li>For both models, I could steer using the difference vector.</li>
-          <li>
-            For inhibiting the refusal behaviour on harmless prompts, I could
-            not steer with both the refusal head contribution as well as the
-            difference vector.
-          </li>
-        </ul>
-        <hr />
-        <h2 id="setup">Setup</h2>
-        <p>
-          To measure the refusal behaviour,
-          <d-cite key="andy_refusal"></d-cite> used
-          <code class="language-plaintext">logit[sorry] - logit[sure]</code>
-          as the metric
-          <d-footnote>
-            My intuition is that this metric is quite lossy. See
-            <strong>Takeaways</strong> for discussion on this. </d-footnote
-          >. A justification being that, if the model would refuse a behaviour,
-          part of the generation starts with “Sorry” and if a model would act
-          out the behaviour, “Sure” would be one of the top next predicted
-          logits.
-        </p>
-        <p>
-          Initially, I tried using the dataset of harmful and harmless objects
-          <d-cite key="andy_refusal"></d-cite> used, but I ran into troubles
-          making sense of the results. Upon investigation, I realized some
-          objects were multi-token, which was just a curse to analyze. So I
-          decided to cherry-pick objects that were single token, instead
-          <d-footnote>Link to dataset I used</d-footnote>.
-        </p>
-        <p>
-          I followed
-          <a href="https://ai.google.dev/gemma/docs/formatting"
-            >Gemma instruction prompt template.</a
-          >
-        </p>
-        <hr />
+  </nav>
+</d-contents>
+<h2 id="background">Background</h2>
+<p>
+  This post represents a step towards my understanding of model behaviour and how to align LLMs with our interests. When I first read the blog, it
+  seemed approachable on the surface level, I felt I could track what the author was doing as well as their motivations and it felt like a good
+  experiment to try and replicate.
+</p>
+<p>This also represents an attempt to upskill on Mechanistic Interpretability tooling.</p>
+<p>
+  This post is based on <d-cite key="andy_refusal"></d-cite>. If you need a more indepth explanation, or a refresher, I suggest the reader goes
+  through the blog and return, because this writeup just summarises my findings and assumes the reader is familiar with mech interp-related terms.
+</p>
+<hr />
+<h2 id="summary">Summary</h2>
+<ul>
+  <li>
+    I investigated the refusal behaviour as described in
+    <d-cite key="andy_refusal"></d-cite> on the Gemma 2 suite of models, specifically Gemma 2-2B and Gemma 2-9B.
+  </li>
+  <li>I couldn't steer with the refusal heads contribution with Gemma 2-2B.</li>
+  <li>I could steer with the refusal heads contribution with Gemma 2-9B, albeit with a significant increase in the scaling factor, &gt; 26x.</li>
+  <li>For both models, I could steer using the difference vector.</li>
+  <li>
+    For inhibiting the refusal behaviour on harmless prompts, I could not steer with both the refusal head contribution as well as the difference
+    vector.
+  </li>
+</ul>
+<hr />
+<h2 id="setup">Setup</h2>
+<p>
+  To measure the refusal behaviour,
+  <d-cite key="andy_refusal"></d-cite> used
+  <code class="language-plaintext">logit[sorry] - logit[sure]</code>
+  as the metric
+  <d-footnote>
+    My intuition is that this metric is quite lossy. See
+    <strong>Takeaways</strong> for discussion on this. </d-footnote
+  >. A justification being that, if the model would refuse a behaviour, part of the generation starts with “Sorry” and if a model would act out the
+  behaviour, “Sure” would be one of the top next predicted logits.
+</p>
+<p>
+  Initially, I tried using the dataset of harmful and harmless objects
+  <d-cite key="andy_refusal"></d-cite> used, but I ran into troubles making sense of the results. Upon investigation, I realized some objects were
+  multi-token, which was just a curse to analyze. So I decided to cherry-pick objects that were single token, instead
+  <d-footnote>Link to dataset I used</d-footnote>.
+</p>
+<p>
+  I followed
+  <a href="https://ai.google.dev/gemma/docs/formatting">Gemma instruction prompt template.</a>
+</p>
+<hr />
 
-        <h2 id="results1">Results with Gemma 2-2B</h2>
-        <h3>Residual stream patching</h3>
-        <img
-          src="/assets/img/refusal_replication/2-2b_resid_attrib_plot.png"
-          class="img-fluid rounded z-depth-1"
-          width="100%"
-          height="auto"
-          loading="eager"
-          onerror="this.onerror=null; $('.responsive-img-srcset').remove();"
-          alt="Logit attribution for the residual stream at each layer"
-        />
-        <p>
-          This doesn't compare cleanly with the results from
-          <d-cite key="andy_refusal"></d-cite>. The absolute value of the
-          refusal score for harmful logits appears to be higher here the
-          absolute value of the refusal score for harmful logits in
-          <d-cite key="andy_refusal"></d-cite>. For harmless logits, the
-          opposite appears to be true.
-        </p>
-        <h3>Residual stream activation patching</h3>
-        <img
-          src="/assets/img/refusal_replication/2B resid_act_patch.png"
-          class="img-fluid rounded z-depth-1"
-          width="50%"
-          height="40%"
-          loading="eager"
-          onerror="this.onerror=null; $('.responsive-img-srcset').remove();"
-          alt="Patching residual stream at each layer"
-        />
-        <p>
-          The results at the <code class="language-plaintext">obj</code> token
-          position as well as the last token position is expected. At the
-          <code class="language-plaintext">'.'</code> token position, which
-          would be henceforth regarded as the
-          <code class="language-plaintext">post obj</code> token position,
-          layers 8 - 15 seems to be carrying signals related to the refusal
-          behaviour. Going forward, these layers are layers of interest.
-        </p>
+<h2 id="results1">Results with Gemma 2-2B</h2>
+<h3>Residual stream patching</h3>
+<img
+  src="/assets/img/refusal_replication/2-2b_resid_attrib_plot.png"
+  class="img-fluid rounded z-depth-1"
+  width="100%"
+  height="auto"
+  loading="eager"
+  onerror="this.onerror=null; $('.responsive-img-srcset').remove();"
+  alt="Logit attribution for the residual stream at each layer"
+/>
+<p>
+  This doesn't compare cleanly with the results from
+  <d-cite key="andy_refusal"></d-cite>. The absolute value of the refusal score for harmful logits appears to be higher here the absolute value of the
+  refusal score for harmful logits in <d-cite key="andy_refusal"></d-cite>. For harmless logits, the opposite appears to be true.
+</p>
+<h3>Residual stream activation patching</h3>
+<img
+  src="/assets/img/refusal_replication/2B resid_act_patch.png"
+  class="img-fluid rounded z-depth-1"
+  width="50%"
+  height="40%"
+  loading="eager"
+  onerror="this.onerror=null; $('.responsive-img-srcset').remove();"
+  alt="Patching residual stream at each layer"
+/>
+<p>
+  The results at the <code class="language-plaintext">obj</code> token position as well as the last token position is expected. At the
+  <code class="language-plaintext">'.'</code> token position, which would be henceforth regarded as the
+  <code class="language-plaintext">post obj</code> token position, layers 8 - 15 seems to be carrying signals related to the refusal behaviour. Going
+  forward, these layers are layers of interest.
+</p>
 
-        <h3>Attention layer activation patching</h3>
-        <p>
-          The <code class="language-plaintext">resid_post</code> at any layer
-          can be decomposed into
-          <code class="language-plaintext"
-            >resid_post = resid_pre + attn_out + mlp_out </code
-          >. So let's see what's up with
-          <code class="language-plaintext"> attn_out </code>.
-        </p>
-        <img
-          src="/assets/img/refusal_replication/2B attn_out_act_patch.png"
-          class="img-fluid rounded z-depth-1"
-          width="50%"
-          height="40%"
-          loading="eager"
-          onerror="this.onerror=null; $('.responsive-img-srcset').remove();"
-          alt="Patching residual stream at each layer"
-        />
-        <ul>
-          <li>
-            A surprising result is that attn_out activation patching cannot
-            fully recover the refusal behaviour. This is evident because at the
-            post-object token position, the refusal score at the final layer is
-            0.7707379.
-          </li>
-          <li>
-            By layer 15, the score is close to the final layer's refusal score -
-            0.7689, which seems to correlate with the results from residual
-            stream activation patching and suggest that indeed, layers after
-            layer 15 aren't contributing as much to the refusal behaviour.
-          </li>
-        </ul>
+<h3>Attention layer activation patching</h3>
+<p>
+  The <code class="language-plaintext">resid_post</code> at any layer can be decomposed into
+  <code class="language-plaintext">resid_post = resid_pre + attn_out + mlp_out </code>. So let's see what's up with
+  <code class="language-plaintext"> attn_out </code>.
+</p>
+<img
+  src="/assets/img/refusal_replication/2B attn_out_act_patch.png"
+  class="img-fluid rounded z-depth-1"
+  width="50%"
+  height="40%"
+  loading="eager"
+  onerror="this.onerror=null; $('.responsive-img-srcset').remove();"
+  alt="Patching residual stream at each layer"
+/>
+<ul>
+  <li>
+    A surprising result is that attn_out activation patching cannot fully recover the refusal behaviour. This is evident because at the post-object
+    token position, the refusal score at the final layer is 0.7707379.
+  </li>
+  <li>
+    By layer 15, the score is close to the final layer's refusal score - 0.7689, which seems to correlate with the results from residual stream
+    activation patching and suggest that indeed, layers after layer 15 aren't contributing as much to the refusal behaviour.
+  </li>
+</ul>
 
-        <h3>MLP Layer activation patching</h3>
-        <p>
-          I decided to run activation patching on the MLP out of each layer as
-          well, just to see what gives.
-        </p>
-        <img
-          src="/assets/img/refusal_replication/2B mlp_out_act_patch.png"
-          class="img-fluid rounded z-depth-1"
-          width="50%"
-          height="40%"
-          loading="eager"
-          onerror="this.onerror=null; $('.responsive-img-srcset').remove();"
-          alt="Patching residual stream at each layer"
-        />
-        <p>
-          In <i>retrospect</i>, this result makes sense. One can think of it as,
-          patching in at the <code class="language-plaintext">obj</code> token
-          position is analogous to replacing the harmless objects with the
-          harmful object in the prompt. The refusals score at
-          <code class="language-plaintext">obj</code> position is
-          <code class="language-plaintext">0.888</code>.
-        </p>
+<h3>MLP Layer activation patching</h3>
+<p>I decided to run activation patching on the MLP out of each layer as well, just to see what gives.</p>
+<img
+  src="/assets/img/refusal_replication/2B mlp_out_act_patch.png"
+  class="img-fluid rounded z-depth-1"
+  width="50%"
+  height="40%"
+  loading="eager"
+  onerror="this.onerror=null; $('.responsive-img-srcset').remove();"
+  alt="Patching residual stream at each layer"
+/>
+<p>
+  In <i>retrospect</i>, this result makes sense. One can think of it as, patching in at the <code class="language-plaintext">obj</code> token position
+  is analogous to replacing the harmless objects with the harmful object in the prompt. The refusals score at
+  <code class="language-plaintext">obj</code> position is <code class="language-plaintext">0.888</code>.
+</p>
 
-        <h3>Attention heads activation patching</h3>
-        <img
-          src="/assets/img/refusal_replication/2B attn_head_act_patch.png"
-          class="img-fluid rounded z-depth-1"
-          width="50%"
-          height="40%"
-          loading="eager"
-          onerror="this.onerror=null; $('.responsive-img-srcset').remove();"
-          alt="Patching residual stream at each layer"
-        />
-        <p>
-          Setting an arbitrary threshold of
-          <code class="language-plaintext">0.005</code>, 11 heads were
-          contributing to the refusal behaviour and this set of heads were
-          selected to be the sufficient for the refusal behaviour.
-        </p>
-        <h3>Steering</h3>
-        <h4>With difference vector</h4>
-        <h4>With activation vector</h4>
-        <!-- </p> -->
+<h3>Attention heads activation patching</h3>
+<img
+  src="/assets/img/refusal_replication/2B attn_head_act_patch.png"
+  class="img-fluid rounded z-depth-1"
+  width="50%"
+  height="40%"
+  loading="eager"
+  onerror="this.onerror=null; $('.responsive-img-srcset').remove();"
+  alt="Patching residual stream at each layer"
+/>
+<p>
+  Setting an arbitrary threshold of
+  <code class="language-plaintext">0.005</code>, 11 heads were contributing to the refusal behaviour and this set of heads were selected to be the
+  sufficient for the refusal behaviour.
+</p>
+<h3>Steering</h3>
+<h4>With difference vector</h4>
+<h4>With activation vector</h4>
+<!-- </p> -->
 
-        <hr />
-        <h2 id="results2">Results with Gemma 2-9B</h2>
-        <h3>Residual stream attribution</h3>
+<hr />
+<h2 id="results2">Results with Gemma 2-9B</h2>
+<h3>Residual stream attribution</h3>
 
-        <h3>Residual stream activation patching</h3>
+<h3>Residual stream activation patching</h3>
 
-        <h3>Attention Layer activation patching</h3>
+<h3>Attention Layer activation patching</h3>
 
-        <h3>MLP Layer activation patching</h3>
+<h3>MLP Layer activation patching</h3>
 
-        <h3>Attention heads activation patching</h3>
+<h3>Attention heads activation patching</h3>
 
-        <h3>Steering</h3>
-
+<h3>Steering</h3>

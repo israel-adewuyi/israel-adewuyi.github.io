@@ -9,7 +9,18 @@
     <link rel="stylesheet" href="{{ '/assets/ledger/style.css' | relative_url }}" />
     <link rel="stylesheet" href="{{ '/assets/ledger/post.css' | relative_url }}" />
     <script>
-      window.MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']] } };
+      window.MathJax = {
+        tex: {
+          inlineMath: [
+            ["$", "$"],
+            ["\\(", "\\)"],
+          ],
+          displayMath: [
+            ["$$", "$$"],
+            ["\\[", "\\]"],
+          ],
+        },
+      };
     </script>
     <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
   </head>
@@ -29,7 +40,10 @@
         <p><b></b>Research record<br />{{ page.date | date: '%Y.%m.%d' }}</p>
       </aside>
       <main class="ledger-post-main" id="article">
-        <div class="ledger-post-top"><span>Research archive / {{ page.categories | first | default: 'note' }}</span><a href="{{ '/writing/' | relative_url }}">Back to writing</a></div>
+        <div class="ledger-post-top">
+          <span>Research archive / {{ page.categories | first | default: 'note' }}</span
+          ><a href="{{ '/writing/' | relative_url }}">Back to writing</a>
+        </div>
         <article class="ledger-post">
           <header>
             <p class="ledger-post-prompt">$ open ./writing/{{ page.slug | default: page.title | slugify }}</p>
