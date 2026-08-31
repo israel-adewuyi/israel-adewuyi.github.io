@@ -1,0 +1,1009 @@
+---
+layout: distill
+ledger_published: true
+title: "Three axes of Parallelism"
+description: "Composing DP, PP and EP"
+date: 2026-07-29
+topic: "Research topic"
+
+# Optional archive image. The path is relative to assets/img/.
+# image: "folder/hero-image.png"
+# caption: "A short description of the archive image."
+
+# Optional: place the matching .bib file under _bibliography/.
+# bibliography: references.bib
+---
+
+## tl;dr
+
+- nanoTitan is a distributed training stack, composing DP, PP and EP. 
+- We give a deep dive into the details of each of these parallelism strategies and their composition, as well as other surrounding details like gradient clipping, checkpointing and gradient accumulation.
+<!-- - Metrics reported are based on GPU availabilityfor 1D paralellism(DP, PP, EP) and 2D (DP + PP, PP + EP, DP + EP) are reported over 4A400s and 3D parallelism(DP, PP, EP), over 8xA4000s. -->
+
+<!-- Why does it matter? -->
+
+## Introduction
+
+Training larger models on increasing amounts of data requires training on more GPUs but each GPU added to the fleet adds some communication cost and different strategies presents its own unique set of challenges and tradeoffs to consider.
+<!-- Scaling to larger models allow to train ever-more increasing model sizes and train on more tokens, but each GPU added to the fleet adds some communication cost. So ideally, each GPU added should be relaxing some bottleneck. -->
+
+We explore 3 parallelism strategies (Data Parallelism, Pipeline Parallelism and Expert Parallelism), first individually, then their (2D/3D) compositions. We also examine their communication patterns, discuss the bottleneck they allieviate and then discuss some implementation details from nanoTitan and report measurements of throughput, memory usage, communication overhead, and scaling behaviour.
+
+- All experiments in this report are single-node experiments, with max of 8 GPUs. Experiments on 1, 2 and 4 GPUs were conducted on RTX 3090 and experiment on 8 GPUs, on 3060.
+- Pytorch's distributed primitives are used for the nanoTitan implementation and the exact implementation of the communication libraries are out of the scope of this report.
+
+### Notation and accounting conventions
+
+The same notation is used across the DP, PP, EP, and composition sections.
+
+| Symbol | Meaning |
+|---|---|
+| $B$ | Global batch size |
+| $b$ | Local microbatch size, `per_rank_batch_size` |
+| $S$ | Sequence length |
+| $D$ | Hidden dimension, `d_model` |
+| $L$ | Number of layers |
+| $P_{DP}$ | Data-parallel size |
+| $P_{PP}$ | Pipeline-parallel size |
+| $P_{EP}$ | Expert-parallel size |
+| $E$ | Total number of experts |
+<!-- | $W$ | Effective link bandwidth (bytes/sec) | -->
+
+
+<details>
+  <summary>See model architecture details</summary>
+- Decoder-only MoE model<br>
+- MHA<br>
+- Pre-norm layers<br>
+- ROPE for positional encoding<br>
+  <table>
+    <tr><th>Layers</th><td>16</td></tr>
+    <tr><th>Hidden dimension</th><td>512</td></tr>
+    <tr><th>Attention heads</th><td>8</td></tr>
+    <tr><th>Experts</th><td>20 (topK = 2)</td></tr>
+  </table>
+</details>
+
+### Background
+- A **rank** is an ID for a process in distributed trainig. A process controls a GPU and we use GPU and rank interchangeably.
+- A **Process Group** defines a set of ranks that are communicating with each other. A rank can be in multiple process groups, which likely means its in comms with multiple set of GPUs.
+- The communication patterns used and reported here are:
+    - [**AllReduce:**](https://andrew.gibiansky.com/blog/machine-learning/baidu-allreduce/) Aggregates a tensor across all the ranks in the process group and return the aggregates to all the ranks.
+    - [**All-to-All:**](https://docs.pytorch.org/docs/2.13/distributed.html#torch.distributed.all_to_all_single) Exchanges different pieces of a tensor between the ranks in the GPU, such that every rank is both a sender and a receiver, sending a chunk and receiving a chunk.
+    - [**Send/recv:**](https://docs.pytorch.org/docs/2.13/distributed.html#point-to-point-communication) Moves a tensor between two ranks.
+
+## Data Parallel (DP)
+When the model parameters, optimizer state, gradients and activations fit on a GPU, DP is the simplest way to scale training. In DP, the model state (params, optimizer states, gradients, and activations) are replicated across a group of ranks, a DP group, but the input batch and consequently the activations are sharded along the batch dimension. Each replica gets an input batch of size $\left[b, \, S\right]$ where $b = \frac{B}{P_{DP}}$.
+
+The batch size and consequently, throughput (measured in tokens/sec) scales with the DP group size.
+
+<figure id="fig-dp" class="l-page">
+  <iframe
+    src="{{ '/assets/_draft/distributed/dp-draft-a-mirror.html' | relative_url }}"
+    title="Interactive data-parallel forward and backward passes"
+    loading="lazy"
+    scrolling="no"
+    style="display: block; width: 100%; height: clamp(200px, 60vw, 420px); border: 0;"
+  ></iframe>
+  <figcaption>
+    DP Overview
+  </figcaption>
+</figure>
+
+During training, there is no communication between the replicas in the DP group. However, during the backward pass, each rank computes the gradients for it's parameter tensors and the gradients are averaged across all the ranks([Eq. 1](#dp-allreduce)), using **AllReduce**. The averaged gradients, equal on every rank, is then used to take the optimizer step. An added bonus of the optimizer step is that (ideally, within some bounds), the model parameters across the DP group would be the same after the optimizer step.
+
+<figure id="dp-allreduce" class="l-body" markdown="1">
+$$
+\nabla G_B
+=
+\frac{1}{P_{DP}}
+\sum_{r=0}^{P_{DP}-1}\nabla G_r.
+$$
+
+<figcaption style="text-transform: none;">
+  <strong>Equation 1.</strong> The global gradient is the average of the gradients computed by the DP replicas.
+</figcaption>
+</figure>
+
+For a broader introduction to data parallelism, see [Siboehm's DP explainer](https://siboehm.com/articles/22/data-parallel-training)
+
+### Implementation Details
+#### Distributed DataLoader
+
+Each DP replica gets a different portion of the training data. In nanoTitan, we implemented it as follows;
+- The dataset is streamed from Huggingface and shuffled using fixed seed across DP group.
+- `[split_dataset_by_node](https://huggingface.co/docs/datasets/en/package_reference/main_classes#datasets.distributed.split_dataset_by_node)` is called on the shuffled stream, passing in the rank's `data_rank` and `world_size` which does the actual partitioning across ranks.
+- Each resulting stream is tokenized and packed independently into sequences of length $S$.
+- The [DataLoader](https://docs.pytorch.org/docs/2.13/data.html#torch.utils.data.DataLoader) then batches these sequences using the per-device batch size $b$.
+
+
+<details>
+  <summary>Code: Dataloading Snippet</summary>
+
+  <pre><code class="language-python">
+class PackedTokenDataset(IterableDataset):
+    def __init__(
+        self,
+        name: str,
+        seq_len: int,
+        seed: int,
+        rank: int,
+        world_size: int,
+        split: str = "train",
+        shuffle: bool = True,
+    ):
+        self.seq_len = seq_len
+        dataset = load_dataset(name, split=split, streaming=True)
+        if shuffle:
+            dataset = dataset.shuffle(seed=seed, buffer_size=10_000)
+        self.dataset = split_dataset_by_node(dataset, rank=rank, world_size=world_size)
+        ...
+
+def prepare_trainloader(train_dataset: PackedTokenDataset):
+  train_loader = DataLoader(
+      train_dataset,
+      batch_size=per_device_batch_size,
+      shuffle=False,
+      ...
+  )
+  return train_loader
+  </code></pre>
+</details>
+
+#### Reducer
+
+Launching AllReduce for every parameter tensor is inefficient as each launch has a fixed cost and too many launches increases latency. Launching the AllReduce only after the backward pass is also inefficient as it could be faster to overlap AllReduce of computed gradients with gradient computation of other parameters <d-footnote>Readers are referred to the fantastic blog post by [Siboehm](https://siboehm.com/articles/22/data-parallel-training), again!</d-footnote>.
+
+The implemented solution is to groups gradients into buckets;
+
+- Assign parameters to buckets in approximately reverse order of `model.parameters()`.
+<details>
+  <summary>Code: Bucketting snippet</summary>
+  <pre><code class="language-python">
+buckets = []
+current_bucket = None
+
+for param in reversed(model.parameters()):
+    param_bytes = param.numel() * param.element_size()
+
+    if (current_bucket is None or current_bucket["size_bytes"] + param_bytes > bucket_size):
+        current_bucket = {"params": [], "size_bytes": 0}
+        buckets.append(current_bucket)
+
+    current_bucket["params"].append(param)
+    current_bucket["size_bytes"] += param_bytes
+  </code></pre>
+</details>
+- Register an autograd hook for each parameter. The hook function passed in, is where we launch the AllReduce.
+- When a gradient for a parameter tensor is produced, mark its position in the bucket ready.
+- Once all the parameters for a bucket are marked as ready, launch its AllReduce asynchronously (this allows backward to continue simultaneuosly).
+- Continue computing gradients for earlier layers while the collective runs.
+- Before the optimizer step, wait for every outstanding collective and expose the averaged gradients to the parameters.
+
+
+Bucket size controls the balance between latency and overlap. At the lower end, each parameter is assigned to its own bucket and in this case, buckets become ready earlier and provide more opportunity to hide communication, but
+they launch more collectives. On the other hand, larger buckets pay less launch overhead in total and tend to use bandwidth more efficiently, but become ready later and leave a smaller overlap window.
+
+<figure id="fig-bucket-allreduce" class="l-page">
+  <iframe
+    src="{{ '/assets/_draft/distributed/bucket-size-vs-all-reduce-calls.html' | relative_url }}"
+    title="Bucket size versus number of AllReduce calls"
+    loading="lazy"
+    scrolling="no"
+    style="display: block; width: 100%; height: clamp(320px, 55vw, 350px); border: 0;"
+  ></iframe>
+  <figcaption>
+    Bucket sizes vs Number of AllReduce launchces
+  </figcaption>
+</figure>
+
+
+#### Gradient clipping
+
+Clipping gradient scales the magnitude of the gradient, while keeping its direction intact. Given a tensor of gradients represented as `grad` with `total_norm`, the formula for clipping the gradient is
+
+$$
+grad = grad \cdot \min \left(\frac{\text{max_norm}}{\text{total_norm} + 1e-6}, 1\right)
+$$
+
+We clip the gradients independently on each rank, after AllReduce has been performed. The gradients, post-AllReduce and post-clipping are identical across the DP group.
+
+
+### Resource Accounting
+
+### Experimental Results
+#### Comparing different DP degrees
+
+<div class="compact-table-wrap">
+  <table class="compact-results-table">
+    <thead>
+      <tr>
+        <th>$P_{DP}$</th>
+        <th>$b$</th>
+        <th>$B$</th>
+        <th>Tokens/sec</th>
+        <th>Number of tokens</th>
+        <th>Step time</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>1</td><td><strong>[ ]</strong></td><td><strong>[ ]</strong></td><td><strong>[ ]</strong></td><td>100%</td><td><strong>[ ]</strong></td></tr>
+      <tr><td>2</td><td>21</td><td>42</td><td><strong>2665.9</strong></td><td><strong>4300800</strong></td><td><strong>8.1</strong></td></tr>
+      <tr><td>4</td><td>21</td><td>84</td><td><strong>6046.5</strong></td><td><strong>8601600</strong></td><td><strong>7.113</strong></td></tr>
+      <tr><td>8</td><td>21</td><td>168</td><td><strong>[ ]</strong></td><td><strong>[ ]</strong></td><td><strong>[ ]</strong></td></tr>
+    </tbody>
+  </table>
+</div>
+
+
+
+## Pipeline Parallel (PP)
+DP makes the assumption that the model fits on a device and while increasing the number of replicas increases the throughput in token/sec, it doesn't reduce the model states stored on each GPU. Once the model states no longer fit on one device, we have to partition the model itself.
+
+PP shards the model across its layers and places each group of layers on separate ranks, each called a **pipeline stage**, with the ranks forming a `PP group`. With $P_{PP}$ pipeline stages, a model with $L$ layers is divided such that there are $\frac{L}{P_{PP}}$ layers assigned to each stage. A stage only has access to it's own local parameters, which it uses in the forward/backward pass, before passing the intermediate activations/derivatives to the next stage<d-footnote>Caveat to this is with tied-embedding. Stage 0 and $P_{PP} - 1$ might be using the same embedding head, just transposed.</d-footnote>.
+
+<figure id="fig-pp" class="l-page">
+  <iframe
+    src="{{ '/assets/_draft/distributed/pp-draft-a-layer-split.html' | relative_url }}"
+    title="Interactive pipeline-parallel layer split"
+    loading="lazy"
+    scrolling="no"
+    style="display: block; width: 100%; height: clamp(200px, 60vw, 420px); border: 0;"
+  ></iframe>
+  <figcaption>
+    PP Overview
+  </figcaption>
+</figure>
+
+For a microbatch of size $b$, stage $i$ sends activations tensors of shape $\left[b,\, S,\, D\right]$ to stage $i + 1$ and during the backward pass, stage $i$ sends gradients w.r.t its inputs activations of the same shape to stage $i - 1$.
+
+PP implemented naively makes poor use of the GPUs because later stages are idle while earlier stages are performing computation and earlier stages are also idle while later stages are performing computation. There are different pipeline schedules that have been developed over the years to combat these *bubbles*, see [Siboehm's pipeline-parallelism explainer](https://siboehm.com/articles/22/pipeline-parallel-training) for a broader explanation on pipeline schedules. Other interesting schedules are DualPiple from Deepseek, PipeDream, PipeDream-2BW.
+
+
+### Implementation Details
+
+With the entire model on one rank, a forward pass call, `model(x)`, implicitly computation goes from the embedding matrix through the layers and then the LM head. After sharding in PP, this breaks down because only stage 0 has the embedding matrix and only stage $P_{PP} - 1$ has the LM head, with intermediate ranks owning a couple of layers and receiving activations, not tokens, as their input. The right mental model here is each stage owns a sequence of modules, gets a tensor, runs forward pass and returns a hidden-state tensor.
+
+#### Build the stage-local model
+
+Before training, each PP rank is assigned a stage index and a consecutive range of transformer layers. The rank constructs only the modules it owns and the optimizer tracks states for only the local parameters. Each stage also records whether it's the first or last stage and it records the ranks of its previous and next neighbours.
+
+<details>
+    <summary>Code: Stage construction snippet</summary>
+    <pre><code class="language-python">
+def get_layer_bounds(cfg: Config, pp_rank: int):
+    per_rank_layers = cfg.model.n_layers // cfg.runtime.pp_size
+    start_idx = pp_rank * per_rank_layers
+    end_idx = (pp_rank + 1) * per_rank_layers
+    return (start_idx, end_idx)
+
+def get_model_shard_specs(dim: ParallelDims, cfg: Config):
+    has_token_embed = dim.is_pp_first_stage
+    has_pos_embed = dim.is_pp_first_stage
+    layer_start, layer_end = get_layer_bounds(cfg, dim.pp_rank)
+    ...
+
+    spec = ModelShardSpec(
+        has_token_embed=has_token_embed,
+        has_pos_embed=has_pos_embed,
+        layer_start=layer_start,
+        layer_end=layer_end,
+        ...
+    )
+
+    return spec  
+    </code></pre>
+</details>
+
+So on each stage, running `model(x)` runs the forward pass computation on the parameters hosted on the stage.
+
+#### Communications across ranks.
+
+`torch.distributed.send` and `torch.distributed.recv` are used for communication between stages. The receiver must first allocate a buffer with the expected shape $\left[b,\, S,\, D\right]$ and dtype and then receive into the buffer.
+
+<details>
+  <summary>Code: forward and backward boundary transport</summary>
+  <pre><code class="language-python">
+def recv_forward(self, microbatch_id):
+    stage_input = self._create_activation_buffer()
+    dist.recv(stage_input, src=self.dim.prev_pp_rank, group=self.dim.pp_group)
+    return stage_input
+
+def send_forward(self, microbatch_id, stage_output):
+    dist.send(stage_output, dst=self.dim.next_pp_rank, group=self.dim.pp_group)
+
+def recv_backward(self, microbatch_id):
+    output_grad = self._create_activation_buffer()
+    dist.recv(output_grad, src=self.dim.next_pp_rank, group=self.dim.pp_group)
+    return output_grad
+
+def send_backward(self, microbatch_id, input_grad):
+    dist.send(input_grad, dst=self.dim.prev_pp_rank, group=self.dim.pp_group)
+  </code></pre>
+</details>
+
+<br>
+
+#### GPipe Schedule
+
+The scheduler first divides the training batch into $M$ microbatches. In the forward pass, the first stage reads tokens as the stage input while every later stage receives an activation as the stage input. Each non-final stage sends its result onward and the final stage computes the loss. The backward pass visits the microbatches in reverse. The final stage starts from its loss and calls `loss.backward()` while every earlier stage receives an output-activation gradient, runs local backward, and sends its input-activation gradient to the preceding rank.
+
+<details>
+  <summary>Code: GPipe training loop snippet</summary>
+  <pre><code class="language-python">for microbatch_id, (x, y) in enumerate(
+    zip(microbatch_x, microbatch_y, strict=False)
+):
+    stage_input = (
+        x.to(pipeline.device)
+        if is_pp_first_stage
+        else pipeline.recv_forward(microbatch_id)
+    )
+    stage_output = pipeline.forward_microbatch(
+        microbatch_id,
+        model,
+        stage_input,
+        y,
+    )
+    if not is_pp_last_stage:
+        pipeline.send_forward(microbatch_id, stage_output)
+
+
+for microbatch_id in reversed(range(len(microbatch_x))):
+    output_grad = (
+        None
+        if is_pp_last_stage
+        else pipeline.recv_backward(microbatch_id)
+    )
+    input_grad = pipeline.backward_microbatch(
+        microbatch_id,
+        output_grad,
+        sync_gradients=microbatch_id == 0,
+    )
+    if not is_pp_first_stage:
+        pipeline.send_backward(microbatch_id, input_grad)</code></pre>
+</details>
+
+#### 1F1B schedule
+
+We still divide the input batch into $M$ microbatches, but `1F1B` begins the backward pass as soon as the gradients are ready. Once the pipeline is full, a stage alternates between computing a forward and a backward pass, hence the name **1F1B**. Each backward pass relaxes the activation memory pressure of the corresponding microbatch and this, in conjunction with the activation checkpointing, makes `1F1B` a more memory efficient schedule than `GPipe`.
+
+We implement a training step in three phases:
+  - **Warmup phase**: Each stage takes it's stage input, runs forward pass and passes the activations to the next stage. Earlier stages have a longer warmup phase because earlier microbatches have to be processed on all stages before backward computation with respect to that microbatch begins. For pipeline stage $p$, it has $\min(M, P_{PP}-p)$ steps.
+  - **Steady phase**: Once the first activation gradient is ready, each stage now runs a backward pass followed by a forward pass. Forward pass corresponds to the next microbatch in the pipeline and backward pass corresponds to the gradient with respect to the most outstanding microbatch.
+  - **Cooldown phase**: Each stages completes it's backward pass and at this point, no more microbatches to be processed in the pipeline.
+
+We maintain an index for both the microbatch forward pass and backward pass; `fwd_idx` points to the next microbatch to be fed into the pipeline and `bwd_idx` points to the oldest microbatch whose gradient hasn't been computed yet. This is important because unline the GPipe implementation where the backward pass is run in reverse order of microbatches index, `1F1B` runs backward pass in increasing order and gradient sync for the step occurs at `bwd_idx == num_microbatches - 1`.
+
+In the warmup and cooldown phase, we use `send` and `recv` from the torch.distributed library and during the steady phase, we use `dist.batch_isend_irecv`. It allows a two ranks to perform a point to point communication i.e rank i sends forward to rank i + 1 and rank i + 1 sends backward to rank i, while also preventing deadlock.
+
+<details>
+  <summary>Code: 1F1B training loop</summary>
+  <pre><code class="language-python">def run_1F1B(pipeline, model, microbatch_x, microbatch_y):
+    M = len(microbatch_x)
+    warmup_steps = min(M, pipeline.dim.pp_size - pipeline.dim.pp_rank)
+    fwd_idx, bwd_idx = 0, 0
+
+    # Warmup: run forwards until the first gradient can reach this stage.
+    while fwd_idx &lt; warmup_steps:
+        stage_input = (
+            microbatch_x[fwd_idx]
+            if pipeline.dim.is_pp_first_stage
+            else pipeline.recv_forward(fwd_idx)
+        )
+        stage_output = pipeline.forward_microbatch(
+            fwd_idx, model, stage_input, microbatch_y[fwd_idx]
+        )
+        if not pipeline.dim.is_pp_last_stage and fwd_idx &lt; warmup_steps - 1:
+            pipeline.send_forward(fwd_idx, stage_output)
+        fwd_idx += 1
+
+    # Steady state: one backward, followed by one forward.
+    while True:
+        output_grad = (
+            None
+            if pipeline.dim.is_pp_last_stage
+            else pipeline.send_forward_recv_backward(stage_output)
+        )
+        input_grad = pipeline.backward_microbatch(bwd_idx, output_grad)
+        bwd_idx += 1
+
+        if fwd_idx == M:
+            if not pipeline.dim.is_pp_first_stage:
+                pipeline.send_backward(bwd_idx - 1, input_grad)
+            break
+
+        stage_input = (
+            microbatch_x[fwd_idx]
+            if pipeline.dim.is_pp_first_stage
+            else pipeline.recv_forward_send_backward(input_grad)
+        )
+        stage_output = pipeline.forward_microbatch(
+            fwd_idx, model, stage_input, microbatch_y[fwd_idx]
+        )
+        fwd_idx += 1
+
+    # Cooldown: drain the remaining backward passes.
+    while bwd_idx &lt; M:
+        output_grad = (
+            None
+            if pipeline.dim.is_pp_last_stage
+            else pipeline.recv_backward(bwd_idx)
+        )
+        input_grad = pipeline.backward_microbatch(bwd_idx, output_grad)
+        if not pipeline.dim.is_pp_first_stage:
+            pipeline.send_backward(bwd_idx, input_grad)
+        bwd_idx += 1</code></pre>
+</details>
+
+#### Gradient Clipping
+
+In PP, the entire model no longer resides on a single GPU. To recover the same norm as single-device training, each stage computes its local **squared** gradient norm which is summed across the PP group (using AllReduce), and the square root is taken once. Every stage then scales its local gradients by the same value.
+
+Let $\Theta_s$ be the parameters owned by pipeline stage $s$, and let $g_p = \nabla_p\mathcal{L}$. Because the stage partitions are disjoint,
+
+$$
+\begin{aligned}
+\lVert g \rVert_2^2
+&= \sum_{p\in\Theta}\lVert g_p\rVert_2^2 \\
+&= \sum_{s=0}^{P_{PP}-1}\sum_{p\in\Theta_s}\lVert g_p\rVert_2^2 \\
+&= \sum_{s=0}^{P_{PP}-1}\lVert g_s\rVert_2^2.
+\end{aligned}
+$$
+
+Therefore, each stage can recover the full-model gradient norm using
+
+$$
+\lVert g\rVert_2
+=
+\sqrt{
+\operatorname{AllReduce}_{\mathrm{SUM}}
+\left(\lVert g_s\rVert_2^2\right)
+}.
+$$
+
+
+### Cost
+Each stage sends 
+$2 b S D $ bytes across the stage boundary and receives the same amount during the backward pass. This brings the total bytes, per microbatch per stage to $4bSD$ bytes. 
+
+With $B = Mb$ as the full batch, total bytes per stage is $4BSD$ bytes.
+
+### Experimental Results
+#### 
+## Expert Parallel (EP)
+A Mixture of Experts (MoE) layer is a nice way to increase model capacity by replacing a single MLP with $E$ expert MLPs while keeping computation roughly constant by only activating $topK$ experts per token. The downside is that the expert parameters, gradients, and optimizer states have to be kept in memory. At some $E$, along with other model parameters, it becomes impractical to fit them on a single GPU.
+
+Across $P_{EP}$ ranks in the Expert Parallel group, Expert parallelism 
+- shards $E$ experts, so each rank owns $E_{\mathrm{local}}=\frac{E}{P_{EP}}$ experts <d-footnote>This assumes $E$ is divisible by $P_{EP}$</d-footnote>.
+- replicates the non-expert weights, including the router.
+- shards the input data, so each rank in the EP group processes different disjoint set of tokens. 
+
+The router on each rank still scores tokens against the global pool of experts $E$ and not $E_{\mathrm{local}}$, so tokens on each rank can select experts across all ranks.
+
+<!-- Top-2 routing across two EP ranks. Each token keeps the same color as it is dispatched to local and remote experts, returned to its source rank, and differentiated during backward. -->
+
+<figure id="fig-ep-top2-routing" class="l-page">
+  <iframe
+    src="{{ '/assets/_draft/distributed/ep-top2-mirror.html' | relative_url }}"
+    title="Top-2 expert routing across two expert-parallel ranks"
+    loading="lazy"
+    scrolling="no"
+    style="display: block; width: 100%; height: clamp(430px, 100vw, 700px); border: 0;"
+  ></iframe>
+  <figcaption>
+    EP Overview
+  </figcaption>
+</figure>
+
+### Implementation
+
+#### Mapping experts to EP ranks
+
+We extend the [stage-local model from PP](#build-the-stage-local-model) by allowing each rank load it's own subset of experts such that rank i holds $[i \cdot E_{\mathrm{local}}, (i+1)\cdot E_{\mathrm{local}})$-th expert.
+
+<details>
+    <summary>Code: Stage construction snippet</summary>
+    <pre><code class="language-python">
+
+def get_expert_bounds(ep_rank: int, num_per_rank_experts: int):
+    start_expert_id = ep_rank * num_per_rank_experts
+    end_expert_id = start_expert_id + num_per_rank_experts
+    return (start_expert_id, end_expert_id)
+
+def get_model_shard_specs(dim: ParallelDims, cfg: Config):
+    ...
+    num_per_rank_experts = dim.num_experts // dim.ep_size
+    start_expert_id, end_expert_id = get_expert_bounds(dim.ep_rank, num_per_rank_experts)
+    ...
+
+    spec = ModelShardSpec(
+        ...
+        per_rank_expert=num_per_rank_experts,
+        start_expert_id=start_expert_id,
+        end_expert_id=end_expert_id,
+        ep_size=dim.ep_size,
+        ep_group=dim.ep_group,
+        ...
+    )
+
+    return spec  
+    </code></pre>
+</details>
+<br>
+On each rank, $E_{\mathrm{local}}$ experts are then initialized contiguously, for reasons we will get to later. 
+
+<details>
+    <summary>Code: Experts initialization</summary>
+    <pre><code class="language-python">
+class ExpertFFN(nn.Module):
+
+    def __init__(self, cfg: ModelConfig, spec: ModelShardSpec):
+        ...
+
+        self.W_gate = nn.Parameter(
+            torch.empty(spec.per_rank_expert, cfg.d_model, cfg.ffn_in, ...)
+        )
+        self.W_val = nn.Parameter(
+            torch.empty(spec.per_rank_expert, cfg.d_model, cfg.ffn_in, ...)
+        )
+        self.W_out = nn.Parameter(
+            torch.empty(spec.per_rank_expert, cfg.ffn_in, cfg.d_model, ...)
+            )
+        ...
+    </code></pre>
+</details>
+<br>
+The 0th training step starts with identical values for the replicated parameters and to ensure this, we broadcast the `param.statedict()` for the replicated parameters from EP rank = 0 to other ranks in the EP group <d-footnote>This is also the type of broadcasting we do in DP at the start of the training</d-footnote>. 
+
+The broadcast method is defined (??above, below) and will prove to be useful once we begin composing these parallelisms together.
+
+<details>
+    <summary>Code: Broadcasting replicated parameters weight</summary>
+    <pre><code class="language-python">
+self.broadcast_parameters(
+      params=groups["expert"],
+      src_rank=self.dims.expert_dp_group_ranks[0],
+      group=self.dims.expert_dp_group,
+  )
+    </code></pre>
+</details>
+
+
+#### Producing assignments
+
+The token representation on the source rank <d-footnote>local residual stream</d-footnote> with shape $\left[b, \, S, \,D\right]$ is flattened across batch and sequence length dimensions to $\left[T, \,D\right]$. The router scores every token against all $E$ experts, producing router scores with shape $[T,E]$ and *topk* selection gives the index of the *topk* experts, `expert_IDs`, for each token as well as the probability with which each expert was chosen, `router_weights`. Both `router_weights` and `expert_IDs` have shape $\left[T, \,k\right]$.
+
+Each token now has $k$ destinations and conceptually, the residual stream is expanded from $[T,D]$ to $[T,k,D]$ which is also flattened to $[TK, D]$. This $[TK,D]$ tensor is the **assignment buffer**. `router_weights` and `expert_IDs` are flattened to vectors of length $TK$.
+
+In the assignment buffer, the $K$ assignments for token 0 come first, followed by the $K$ assignments for token 1, and so on. This *token-major* layour isn't convienient for All-to-All (A2A) communication as A2A requires the assignments be grouped by destination rank.
+
+We rearrange/pack the assignment buffer into *expert-major* order i.e the first $k_i$ tokens chose expert 1 and the next $k_i$ tokens chose expert 2.<d-footnote>This is aligned with rank grouping because experts are mapped and initialized on ranks based on ID. So first $E_{local}$ experts are on rank 0 and the next $E_{local}$ experts are on rank 1, and so on.</d-footnote> The number of assignment is still $Tk$, but the physical and logical interpretation of the tensors is changed. To implement this, we count the number of tokens that chose each expert, compute the offset from their cumulative counts and write each token assignment to the corresponding region of the packed buffer.
+
+
+<!-- we allocate the memory location for all the tokens that wrote to each expert, map each token to some relative position for that expert and write to that memory location. -->
+
+<details>
+  <summary>Code: Producing assignments</summary>
+  <pre><code class="language-python">
+tokens_per_expert = torch.bincount(
+    expert_idx.reshape(-1), minlength=cfg.num_experts
+)
+expert_offsets = torch.empty(cfg.num_experts + 1, dtype=torch.long, device=x.device)
+expert_offsets[0] = 0
+expert_offsets[1:] = torch.cumsum(tokens_per_expert, dim=0)
+
+total_assignments = flat_tokens.shape[0] * self.cfg.top_k
+packed_X = torch.empty(
+    (total_assignments, d_model), dtype=flat_tokens.dtype, device=x.device
+)
+...
+for expert in range(self.cfg.num_experts):
+    indices = torch.argwhere(topk_expert_idx == expert)
+    if indices.numel() == 0:
+        continue
+    start = expert_offsets[expert].item()
+    end = expert_offsets[expert + 1].item()
+    packed_X[start:end] = flat_tokens[indices[:, 0]]
+    ...
+  </code>
+  </pre>
+</details>
+
+
+#### Dispatch, expert computation and combine
+
+Each rank in the EP group has it's assignment buffer grouped by destination expert and therefore by destination rank. Dispatching (or exchanging) the assignments, from All ranks to All ranks requires each rank knowing how many tokens it will send to and receive from every other rank.
+
+<!-- Each rank in the EP group, with it's assignment buffer, exchanges tokens with every other rank<d-footnote>Ideally, every other rank. This motivates the need for balanced assignment as ranks that do not get any assignment do not utilize the GPU properly</d-footnote>, each expert on each rank runs the forward pass on the tokens aggregated from every rank in the EP group and returns the token representation to the respective ranks that sent them (this might be repetitive, maybe I said this elsewhere already, IDK). -->
+
+<!-- Dispatching(or exchanging) the buffer, from All ranks to All ranks requires each rank knowing - aggregated from every other rank - how many tokens it would be receiving. -->
+
+- For each expert $E$, we count how many tokens would be routed to it, `expert_counts`, shape is $[E]$.
+- We reshape `expert_counts` to `send_matrix`, with shape $[P_{EP}, E_{local}]$, where the `ij`-th entry corresponds to the number of tokens the current rank wants to route to lcoal expert `j` in rank `i`.
+- We perform a small A2A exchange of these counts across the EP group. On each rank, the resulting `recv_matrix` also has shape $[P_{EP}, E_{local}]$, where the `ij`-th entry corresponds to the number of tokens rank i sent to local expert j on the current rank. <d-footnote>Row i can be viewed as the number of tokens the current rank sent to itself. In practise, this doesn't cross the inter-GPU connect</d-footnote>.
+- From `recv_matrix`, we know both the total receive-buffer size, `sum(recv_matrix)` and how many assignments will arrive from each source rank, `recv_matrix.sum(dim=1)[i]`. We can then allocate `received_X` and perform A2A on the token payloads.
+- After A2A, `received_X` is laid out primarily by source rank i.e assignments from rank 0 are contiguous, followed by assignments from rank 1, and so on. Expert computation instead requires assignments for each local expert to be contiguous. We therefore permute the received buffer from this source-major layout into an expert-major layout.
+- The number of assignments for each local expert is given by `recv_matrix.sum(dim=0)`, and cumulative sums of these counts give the offsets into the expert-major buffer. Since both the expert weights and their assigned tokens are now contiguous, expert computation reduces to $E_{\mathrm{local}}$ independent MLP computations.
+
+<!-- - Figure XXX shows how to think of received_X after the A2A communication. To perform expert computation however, we want the tokens routed to each expert to be contiguously laid out in memory and so we permute received_X to reflect this. -->
+<!-- - `received_X` is laid out by rank on each destination rank and to use it in the expert forward pass, we rearrange it to be laid out by expert by ????? -->
+<!-- - We then perform expert computation -->
+<!-- - The destination rank reverses the token permutation that was done to restore the received_X to rank-major layout. All2All is then performed and the tensors are communicated with all the ranks in the EP group having the initial `X` thensent over. -->
+<!-- - We then take a weighted sum of the token representation  -->
+
+<!-- - Expert computation is then simplified because the expert weights are contiguous and the tokens for each experts are also contiguous plus the offset for each expert can be computed from the culmulative sum of `recv_matrix.sum(dim=0)`. This is essentially $E_{local}$ MLP computations. -->
+<!-- - We reverse the layout of the processed received_X from expert-major to token-major and use A2A to again communicate all the tokens to their original ranks. -->
+<!-- - We then combine the tokens. -->
+
+
+
+
+### Cost
+We assume each uniform token choice, so with $E$ experts, $T$ tokens choose $K$ experts, which gives us $TK$ assignments. If we assume that the choice is uniform across experts, then on average, each expert gets assigned $TK / E$ tokens. With $P_{EP}$ shards, each rank then has to send $TK(P_{EP}-1) / E$ tokens, in the All-to-All.
+
+Total number of bytes = $2TK(P_{EP} - 1) / E$
+$T_{comms} = 2TK(P_{EP} - 1) / EW$, where $W$ is the NVLink Bandwidth.
+T_computation = 
+
+- Cost of A2A
+### What bottleneck does it solve?
+
+### Experimental Results
+#### Comparing EP with DP, at the same per_rank_batch_size
+
+| Parallelism | $b$ | $B$ | Tokens/sec | Number of tokens | Step time |
+|---:|---:|---:|---:|---:|---:|
+| 1 | **[ ]** | **[ ]** | **[ ]** | 100% | **[ ]** | 
+| 2 | 21 | 42 | **[ ]** | **[ ]** | **[ ]** |
+| 4 | 21 | 84 | **[ ]** | **[ ]** | **[ ]** |
+| 8 | 21 | 168 | **[ ]** | **[ ]** | **[ ]** |
+
+
+## DP + PP
+
+Composing DP and PP relaxes the model-state memory while maintaining DP's throughput scaling. DP creates $P_{DP}$ model replicas, each getting a different data shard and PP shards each replica across $P_{PP}$ stages. The total number of ranks is therefore $P_{\mathrm{world}}=P_{DP} \cdot P_{PP}$. 
+
+This composition also maintains their individual communication patterns, albeit, slightly different. There is the activation transfer **within** each replica and gradient AllReduce **across** replica, for all the stages.
+
+<figure id="fig-dp-pp-composition" class="l-page">
+  <iframe
+    src="{{ '/assets/_draft/distributed/dp-pp-composition.html' | relative_url }}"
+    title="Composition of data and pipeline parallelism"
+    loading="lazy"
+    scrolling="no"
+    style="display: block; width: 100%; height: clamp(360px, 67vw, 500px); border: 0;"
+  ></iframe>
+  <figcaption>
+    Two DP replicas, each partitioned into three PP stages. During backward, matching stages synchronize their parameter gradients with AllReduce.
+  </figcaption>
+</figure>
+
+
+### Implementation
+
+#### Rank Identity
+
+A rank must know which replica it belongs to and which stage within the replica it belongs to. This determines who it sends/receives activation from and who it all-reduces with. 
+
+For rank $r\in\{0,\ldots,P_{\mathrm{world}}-1\}$, it maps to
+
+$$
+r=(\text{dp_rank}\cdotP_{PP})+\text{pp_rank},
+\qquad
+\text{dp_rank}=\left\lfloor\frac{r}{P_{PP}}\right\rfloor,
+\qquad
+\text{pp_rank}=r \text{\%} P_{PP},
+$$
+
+where $\text{dp_rank}$ is the DP-replica coordinate and $\text{pp_rank}$ is the PP-stage coordinate.
+
+From the PP section, each stage is aware of the rank of the next stage and previous stage.
+
+In the example above, the (?? I would like to show a walk through, for each rank, highlight it's identity (dprnak, pprank, next pp stage, prev_pp_stage, e.t.c))
+
+
+#### Build the stage-local model
+
+
+The model abstraction of treating a local model as just a collection of `nn.Modules` vs (Embed + PosEmbed + TransformerBlock + Unembed) proved useful here. The PP coordinate determines which modules a rank owns. All ranks with the same $p$ i.e $(0,p),(1,p),\ldots,(P_{DP}-1,p)$ construct the same stage parameters. The optimizer states are also with respect to the stage parameters.
+
+??? In intro, we don't talk about much fwd and bwd pass for individual parallelisms, would go indepth, for the compositions.
+
+To ensure that training starts with identical parameters, each rank builds it's own model parameters, but we broadcast from all the ranks with DP = 0, across the DP group. 
+
+#### Forward pass
+
+GPUs with pp_rank = 0 across all replicas get disjoint input shards.
+- Across replicas, there is no communication, each replica computes like normal DP.
+- Within replicas, each stage computes with its local parameters and sends activations to the next stage
+
+#### Backward pass
+
+Each replica computes it's local gradient but weights are averaged across DP ranks for the same pipeline stage.
+
+
+
+During backward, each pipeline replica computes gradients from its own data
+shard. For stage $p$, let $g^{\mathrm{local}}_{d,p}$ be the gradient accumulated
+over the $M$ microbatches in DP replica $d$. Matching stages must average those
+gradients across their DP group:
+
+$$
+\bar g_p
+=
+\frac{1}{P_{DP}}
+\sum_{d=0}^{P_{DP}-1}g^{\mathrm{local}}_{d,p}.
+$$
+
+The GPipe backward sweep runs in reverse microbatch order. Gradients from the
+first $M-1$ backward calls should accumulate locally without DP communication.
+When `microbatch_id == 0`, the final backward call makes each stage's full-batch
+gradient complete. At that point the reducer can launch bucket AllReduces over
+the stage's **DP group** while earlier local layers continue backpropagating.
+
+<details>
+  <summary>Code: composed backward pass</summary>
+  <pre><code class="language-python">for microbatch_id in reversed(range(num_microbatches)):
+    output_grad = (
+        None
+        if pp_rank == pp_size - 1
+        else recv_backward(microbatch_id, group=pp_group)
+    )
+
+    input_grad = backward_microbatch(
+        microbatch_id,
+        output_grad,
+        # microbatch 0 is executed last in the reversed sweep.
+        sync_gradients=microbatch_id == 0,
+        dp_group=dp_group,
+    )
+
+    if pp_rank > 0:
+        send_backward(
+            microbatch_id,
+            input_grad,
+            group=pp_group,
+        )
+
+reducer.wait_for_allreduces()
+clip_composed_gradient()
+optimizer.step()</code></pre>
+</details>
+
+The optimizer boundary is now constrained by both axes. A stage cannot step
+until it has completed backward for every microbatch **and** all of its DP
+AllReduces have finished. Each rank then updates only its stage-local parameters;
+matching stage replicas arrive at identical new values because they began with
+the same values and use the same reduced gradients.
+
+#### Gradient clipping
+
+We carry out gradient clipping after gradient AllReduce, so 
+
+After AllReduce, the gradient norm will be equal across all the ranks
+
+## PP + EP
+Here, we partition the model along two axes. PP assigns $\frac{L}{P_{PP}}$ to each stage while EP shards the expert within each stage across $P_{EP}$ ranks. A stage is now an EP group, rather than a single rank.
+
+<figure id="fig-pp-ep-composition" class="l-page">
+  <iframe
+    src="{{ '/assets/_draft/distributed/pp-ep-composition.html' | relative_url }}"
+    title="Composition of pipeline and expert parallelism"
+    loading="lazy"
+    scrolling="no"
+    style="display: block; width: 100%; height: clamp(430px, 72vw, 740px); border: 0;"
+  ></iframe>
+  <figcaption>
+    Two PP stages, each implemented by a two-rank EP group. Pipeline transfers run horizontally between matching EP ranks, while expert dispatch and return run vertically within each stage.
+  </figcaption>
+</figure>
+
+<!-- - We partition the model across it's layers and shard each stage's expert across more ranks. -->
+<!-- - The notion of a stage here moves from a rank to multiple ranks i.e each stage is an expert group.  -->
+<!-- - So assume a 2L model, each corresponding to different stages. Each layer then shards it's expert across N ranks -->
+<!-- - Releaves memory pressure for the entire model and expert memory + activation pressure for EP. -->
+
+### Implementation
+#### Rank Identity
+Each rank is identified by which PP stage it implements and which expert rank within the stage that it implements.
+
+For rank $r\in\{0,\ldots,P_{\mathrm{world}}-1\}$, it maps to
+
+\[
+\begin{aligned}
+r &= (\text{pp_rank} \cdot P_{EP}) + \text{ep_rank}, \\
+\text{pp_rank} &= \left\lfloor \frac{r}{P_{EP}} \right\rfloor, \\
+\text{ep_rank} &= r \bmod P_{EP}.
+\end{aligned}
+\]
+
+These coordinates define two kinds of process groups. Ranks with the same `pp_rank` form an EP group and exchange tokens within a stage. Ranks with the same `ep_rank` form a PP group and pass residual-stream activations
+between stages. For example, with $P_{PP}=P_{EP}=2$, ranks $(0,1)$ implement the first stage and ranks $(2,3)$ implement the second, while the PP connections are $0\leftrightarrow2$ and $1\leftrightarrow3$.
+
+#### Map parameters to ranks
+Model construction reuses the [stage-local model](#build-the-stage-local-model): `pp_rank` selects the range of transformer layers and `ep_rank` selects the experts owned within those layers. Non-expert parameters, including the router, are replicated across the stage's EP group, while expert parameters are sharded.
+
+#### Forward pass + Backward pass
+During the forward pass, each rank in the first stage receives a different input shard. Within a stage, routing, dispatch, expert computation, and combine proceed exactly as in EP. Once the assignments have been returned and combined, rank $(p,e)$ sends its local residual-stream shard to rank $(p+1,e)$. The final stage computes a loss for each local input shard.
+
+The backward pass follows the same communication paths in reverse: activation gradients move between pipeline stages, while gradients for replicated non-expert parameters are averaged within each stage's EP group. Expert gradients remain local because every expert has a unique owner.
+
+
+
+
+<!-- Using the rank coordinate, we determine which layers are on each stage and which expert params are on which expert rank. -->
+<!-- - Number of stages = $P_{PP}$, number of layers on each stage = $\frac{L}{P_{PP}}$ -->
+
+<!-- - Each rank get it's identity, which is a coordinate of which pipeline stage and expert rank within that stage that it belongs to. -->
+<!-- - Decide which layers belong to each rank and within each stage, which expert belongs to which rank, based on the rank's identity -->
+
+<!-- - In the forward pass, the input to a stage is the same as in PP i.e tokens if stage is 0 and activations from stage i - 1 if stage > 0. -->
+<!-- - Each stage is exactly an EP group and we already covered this in EP section -->
+<!-- - All non-last stage send their activations to the next stage and the last stage compute the loss, from which we backpropagate. -->
+
+
+## DP + EP
+
+Here, DP creates $P_{DP}$ model replicas and each replica shards its experts across $P_{EP}$ ranks. This allows to increase throughput with DP while relaxing (???) expert parameter/activation memory pressure. The total number of ranks is $P_{\mathrm{world}}=P_{DP} \cdot P_{EP}$.
+
+As with (reference DP + PP), a replica is no longer a single rank. In this case though, it's an expert group that holds sharded expert parameters and replicated non-expert parameters.
+
+### Implementation
+
+#### Rank Identity
+
+A rank must know which replica it belongs to and which expert shard within the replica it implements. For rank $r\in\{0,\ldots,P_{\mathrm{world}}-1\}$, it maps to
+
+$$
+\begin{aligned}
+r &= (\text{dp\_rank} \cdot P_{EP}) + \text{ep\_rank}, \\
+\text{dp\_rank} &= \left\lfloor \frac{r}{P_{EP}} \right\rfloor, \\
+\text{ep\_rank} &= r \bmod P_{EP}.
+\end{aligned}
+$$
+
+Ranks with the same `dp_rank` form an EP group and exchange token assignments within one replica while ranks with the same `ep_rank` own copies of the same expert shard across different DP replicas and form an **expert DP group**. All the $P_{\mathrm{world}}$ ranks also form a **shared DP group**; this is because across a replica (EP group) and all replicas (DP group), non-expert parameters are replicated. So the size of the shared DP group is $P_{DP} \cdot P_{EP}$
+
+#### Map parameters to ranks
+
+The `ep_rank` determines which $\frac{E}{P_{EP}}$ experts a rank loads. Across the DP groups however, there are different replication patterns and this determines the broadcast pattern for the `state_dict()`. 
+- Expert parameters are replicated across *expert DP group*, but sharded across EP group. This means at the start of the training, rank 0 broadcasts the expert parameter's state_dict() to ranks with the same `dp_rank`.
+- Non-expert parameters are replicated across every rank. Rank 0 broadcasts the expert parameters state_dict to every rank in the world_size.
+
+#### Forward pass + Backward pass
+
+Each rank gets a different input shard here. We achieve this by defining a `data_rank` and `data_world_size`. `data_world_size` is equivalent to $P_{EP} \cdot P_{DP}$ and `data_rank` is equivalent to $\text{dp_rank} \cdot P_{EP} + \text{ep_rank}$, and we pass these arguments to the `PackedTokenDataset`. Notice that this works for the DP case alone if we set $P_{EP}$ = 1.
+
+There is no communication between DP replicas during the forward pass and within each replica, routing, dispatch, expert computation and combine proceed exactly as described in the EP section.
+
+During the backward pass, every rank computes the backward pass from it's own data shard. Expert parameters are AllReduced across their DP group and non-expert parameters are AllReduced across the `shared_DP_group` which turns out to be across all ranks.
+
+We instantiate two reducers for each of the expert parameters and non-expert parameters and optimizer step occurs only after all the parameters have been AllReduced across their respective communication groups.
+
+## DP + PP + EP
+
+DP creates multiple model replicas, PP shards each replica across its layers and EP shards the experts within each pipeline stage. A complete DP replica is therefore a pipeline in which every stage is an EP group. The total number of ranks is $P_{\mathrm{world}} = P_{DP}P_{PP}P_{EP}$
+
+This composition relaxes the three bottlenecks discussed so far: PP reduces the model state held by each stage, EP reduces the expert state held by each rank and DP increases the amount of data processed in parallel.
+
+### Implementation
+
+#### Rank Identity
+
+Each rank is identified by a coordinate
+$(\text{dp_rank},\text{pp_rank},\text{ep_rank})$. We keep `ep_rank` as the
+fastest-changing coordinate, followed by `pp_rank`:
+
+$$
+\begin{aligned}
+r &= ((\text{dp_rank}\cdot P_{PP}) + \text{pp_rank})P_{EP}
+     + \text{ep_rank}, \\
+\text{dp_rank} &= \left\lfloor
+\frac{r}{P_{PP}P_{EP}}
+\right\rfloor, \\
+\text{pp_rank} &= \left\lfloor\frac{r}{P_{EP}}\right\rfloor
+\bmod P_{PP}, \\
+\text{ep_rank} &= r \bmod P_{EP}.
+\end{aligned}
+$$
+
+The three coordinates determine all the communication groups:
+
+- An **EP group** fixes `dp_rank` and `pp_rank`, and varies `ep_rank`. It contains the ranks implementing one pipeline stage in one DP replica.
+- A **PP group** fixes `dp_rank` and `ep_rank`, and varies `pp_rank`. It forms one path through the stages of a pipeline replica.
+- An **expert DP group** fixes `pp_rank` and `ep_rank`, and varies `dp_rank`. It contains replicas of the same expert shard at the same pipeline stage.
+- A **non-expert DP group** fixes `pp_rank`, and varies both `dp_rank` and `ep_rank`. It contains every copy of the non-expert parameters belonging to that stage.
+
+#### Map parameters to ranks
+
+We again reuse the stage-local model construction. The `pp_rank` selects the
+range of transformer layers, the `ep_rank` selects the experts within those
+layers and the `dp_rank` creates another copy of that stage and expert shard.
+
+Consequently, an expert parameter is sharded across both PP and EP and is only
+replicated across DP. A non-expert parameter is sharded across PP, but is
+replicated across both DP and EP. The optimizer on each rank is constructed
+only from the parameters that rank owns.
+
+#### Forward pass + Backward pass
+
+At the start of the forward pass, ranks with `pp_rank = 0` receive disjoint
+input shards. Each DP replica runs its own GPipe schedule. For a given
+microbatch, the ranks in a stage first perform the EP routing, dispatch,
+expert computation and combine. Rank $(d,p,e)$ then sends its local
+residual-stream activation to rank $(d,p+1,e)$. The last stage computes a loss
+for each local input shard.
+
+The coordinates make the separation between the communication patterns
+explicit:
+
+- A2A communication happens within an EP group and therefore does not cross a pipeline stage or DP replica.
+- Pipeline activations and activation gradients move within a PP group and therefore keep their `dp_rank` and `ep_rank` coordinates.
+- Gradient AllReduce happens across parameter replicas, using the expert or non-expert DP group depending on the parameter.
+
+The backward pass follows the forward communication paths in reverse. After
+all the microbatches have completed backward, expert gradients are averaged
+across the corresponding expert DP groups and non-expert gradients are
+averaged across the non-expert DP groups. Each rank can then update its local
+stage parameters.
+
+Ranks in the same EP stage must also execute the same microbatch in the same
+order. This is because every rank in the EP group has to enter the count and
+payload A2A collectives in the same order, even though the number of
+assignments sent to each expert may be different.
+
+No new communication primitive is introduced by the 3D composition. It is the
+same point-to-point PP transfers, EP All-to-Alls and DP AllReduces from the
+individual implementations. The additional complexity is in constructing the
+correct groups and ensuring that each parameter is synchronized only with
+ranks that own a copy of it.
+
+## Metrics Summary
+
+
+<!--
+Example figure:
+
+{% include figure.liquid
+  loading="eager"
+  path="assets/img/folder/figure.png"
+  figure_class="l-body"
+  alt="A precise description of the figure"
+%}
+-->
+
+## More Plots!!!
+
+### 2-GPU sweep of pipeline schedule, activation checkpointing, and `num_microbatches`
+
+<figure id="fig-pp-schedule-sweep" class="l-page">
+  <iframe
+    src="{{ '/assets/_draft/distributed/pp-schedule-draft-b-response-curves.html' | relative_url }}"
+    title="Two-GPU sweep of pipeline schedule, activation checkpointing, and number of microbatches"
+    loading="lazy"
+    scrolling="no"
+    style="display: block; width: 100%; height: clamp(380px, 72vw, 760px); border: 0;"
+  ></iframe>
+  <figcaption>
+    A 2-GPU sweep comparing GPipe and 1F1B, with activation checkpointing on and off, across <code>num_microbatches</code> = 2, 7, and 21. The plots show step time, stage 1 peak memory, and last-stage peak memory.
+  </figcaption>
+</figure>
+
+## Discussion
+
+Explain what the results suggest, what surprised you, and how they relate to
+the original question.
+
+## Limitations
+
+- What does this work not establish?
+- Which assumptions or measurements may affect the conclusion?
+- What should be tested next?
+
+## Conclusion
+
+Summarize the main takeaway and any useful next steps.
+
+## Acknowledgements
+
+Credit collaborators, reviewers, compute sponsors, or other support.
