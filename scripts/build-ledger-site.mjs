@@ -493,9 +493,7 @@ function articlePage(post, body, toc, references, footnotes) {
     post.slug
   )}</p><p class="ledger-post-meta">${formatDate(post.date)} / ${escapeHtml(post.description)}</p><h1>${escapeHtml(
     post.title
-  )}</h1></header><div class="ledger-article-layout">${toc}<div class="ledger-post-body">${body}${footnotes}${references}</div></div><footer><span>Project / ${escapeHtml(
-    post.date.slice(0, 4)
-  )}</span><a href="mailto:isistickz@gmail.com">Discuss this note &nearr;</a></footer></article></main></div></body></html>`;
+  )}</h1></header><div class="ledger-article-layout">${toc}<div class="ledger-post-body">${body}${footnotes}${references}</div></div><footer><span>&copy; 2025 Israel Adewuyi</span></footer></article></main></div></body></html>`;
 }
 
 const entries = await readdir(postsDirectory, { withFileTypes: true });

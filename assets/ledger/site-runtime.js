@@ -106,11 +106,9 @@
   const content = { home, projects, publications, about, cv, article }[page] || projects;
   const shell = `<div class="site site--${variant}" data-sidebar-shell><aside class="site-rail"><div class="sidebar-rail-head"><a class="site-mark" href="${routes.home}">IA</a><div class="site-identity"><strong>${escape(
     data.identity.name
-  )}</strong><span>AI research</span></div><button class="sidebar-toggle" type="button" data-sidebar-toggle aria-controls="site-primary-navigation" aria-expanded="true" aria-label="Collapse navigation"><span class="sidebar-toggle__desktop" aria-hidden="true">&lsaquo;</span><span class="sidebar-toggle__mobile" data-sidebar-toggle-text aria-hidden="true">Menu</span></button></div><nav class="site-nav" id="site-primary-navigation" data-sidebar-nav aria-label="Primary navigation">${nav()}</nav>${contactBlock("contact-card--sidebar")}</aside><button class="sidebar-backdrop" type="button" data-sidebar-backdrop aria-label="Close navigation" hidden></button><main class="site-main"><div class="site-top" aria-hidden="true"></div>${content()}<footer class="site-footer"><span>&copy; ${new Date().getFullYear()} ${escape(
+  )}</strong><span>AI research</span></div><button class="sidebar-toggle" type="button" data-sidebar-toggle aria-controls="site-primary-navigation" aria-expanded="true" aria-label="Collapse navigation"><span class="sidebar-toggle__desktop" aria-hidden="true">&lsaquo;</span><span class="sidebar-toggle__mobile" data-sidebar-toggle-text aria-hidden="true">Menu</span></button></div><nav class="site-nav" id="site-primary-navigation" data-sidebar-nav aria-label="Primary navigation">${nav()}</nav>${contactBlock("contact-card--sidebar")}</aside><button class="sidebar-backdrop" type="button" data-sidebar-backdrop aria-label="Close navigation" hidden></button><main class="site-main"><div class="site-top" aria-hidden="true"></div>${content()}<footer class="site-footer"><span>&copy; 2025 ${escape(
     data.identity.name
-  )}</span><span><a href="mailto:${data.identity.email}">${escape(
-    data.identity.email
-  )}</a> / <a href="https://github.com/israel-adewuyi" target="_blank" rel="noreferrer">GitHub</a> / <a href="https://x.com/Israel_Adewuyi_" target="_blank" rel="noreferrer">X</a></span></footer></main></div>`;
+  )}</span></footer></main></div>`;
   document.getElementById("app").innerHTML = shell;
   const observer =
     "IntersectionObserver" in window
