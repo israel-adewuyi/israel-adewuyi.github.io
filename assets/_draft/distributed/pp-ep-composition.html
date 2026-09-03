@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PP x EP composition - forward</title>
+    <link rel="stylesheet" href="./parallel-mirror.css" />
+    <link rel="stylesheet" href="./pp-ep-composition.css" />
+  </head>
+  <body>
+    <main class="parallel-draft pp-ep-draft" data-phase="forward">
+      <header class="dp-head">
+        <span class="dp-kicker">Pipeline x expert parallelism</span>
+        <span class="dp-chip">2 PP stages / 2 EP ranks / 4 GPUs</span>
+      </header>
+
+      <section class="stage pp-ep-stage" aria-label="Animated pipeline- and expert-parallel composition">
+        <svg viewBox="0 0 1120 610" role="img" aria-labelledby="ppep-title ppep-desc">
+          <title id="ppep-title">Two pipeline stages, each implemented by a two-rank expert-parallel group</title>
+          <desc id="ppep-desc">
+            Pipeline communication runs horizontally between matching expert ranks. Within each pipeline stage,
+            expert dispatch and return run vertically between expert ranks. Backward reverses those exchanges,
+            sends input gradients to the previous pipeline stage, and AllReduces shared parameter gradients within each stage.
+          </desc>
+          <defs>
+            <marker id="ppep-blue-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#4d91c7" />
+            </marker>
+            <marker id="ppep-green-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#5c9c74" />
+            </marker>
+            <marker id="ppep-comm-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#e06d3f" />
+            </marker>
+            <marker id="ppep-ink-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#171916" />
+            </marker>
+          </defs>
+
+          <text x="560" y="18" text-anchor="middle" class="ppep-axis-label mono">PP axis</text>
+          <path d="M 430 27 H 690" class="ppep-axis-line" marker-end="url(#ppep-ink-arrow)" />
+          <text x="320" y="43" text-anchor="middle" class="ppep-stage-label mono">PP stage 0 / layers 0-5</text>
+          <text x="800" y="43" text-anchor="middle" class="ppep-stage-label mono">PP stage 1 / layers 6-11</text>
+
+          <path d="M 72 135 V 475" class="ppep-axis-line" marker-start="url(#ppep-ink-arrow)" marker-end="url(#ppep-ink-arrow)" />
+          <text x="48" y="305" text-anchor="middle" class="ppep-axis-label mono" transform="rotate(-90 48 305)">EP axis</text>
+          <text x="124" y="93" text-anchor="end" class="ppep-rank-label mono">EP rank 0</text>
+          <text x="124" y="413" text-anchor="end" class="ppep-rank-label mono">EP rank 1</text>
+
+          <rect x="135" y="55" width="370" height="500" class="ppep-stage-frame" />
+          <rect x="615" y="55" width="370" height="500" class="ppep-stage-frame" />
+
+          <g class="ppep-rank-zero" aria-label="Expert rank zero cards">
+            <g aria-label="GPU zero, pipeline stage zero, expert rank zero">
+              <rect x="155" y="70" width="330" height="145" class="ppep-card" />
+              <rect x="155" y="70" width="330" height="32" class="ppep-card-head" />
+              <text x="170" y="91" class="label mono">GPU 0 / PP 0 / EP 0</text>
+              <rect x="173" y="116" width="294" height="34" class="ppep-shared" />
+              <text x="320" y="138" text-anchor="middle" class="small-label mono">shared layers + router / replicated</text>
+              <rect x="173" y="165" width="139" height="35" class="ppep-expert" />
+              <rect x="328" y="165" width="139" height="35" class="ppep-expert" />
+              <text x="242" y="187" text-anchor="middle" class="label mono">expert E0</text>
+              <text x="397" y="187" text-anchor="middle" class="label mono">expert E1</text>
+            </g>
+            <g aria-label="GPU two, pipeline stage one, expert rank zero">
+              <rect x="635" y="70" width="330" height="145" class="ppep-card" />
+              <rect x="635" y="70" width="330" height="32" class="ppep-card-head" />
+              <text x="650" y="91" class="label mono">GPU 2 / PP 1 / EP 0</text>
+              <rect x="653" y="116" width="294" height="34" class="ppep-shared" />
+              <text x="800" y="138" text-anchor="middle" class="small-label mono">shared layers + router / replicated</text>
+              <rect x="653" y="165" width="139" height="35" class="ppep-expert" />
+              <rect x="808" y="165" width="139" height="35" class="ppep-expert" />
+              <text x="722" y="187" text-anchor="middle" class="label mono">expert E0</text>
+              <text x="877" y="187" text-anchor="middle" class="label mono">expert E1</text>
+            </g>
+          </g>
+
+          <g class="ppep-rank-one" aria-label="Expert rank one cards">
+            <g aria-label="GPU one, pipeline stage zero, expert rank one">
+              <rect x="155" y="390" width="330" height="145" class="ppep-card" />
+              <rect x="155" y="390" width="330" height="32" class="ppep-card-head" />
+              <text x="170" y="411" class="label mono">GPU 1 / PP 0 / EP 1</text>
+              <rect x="173" y="436" width="294" height="34" class="ppep-shared" />
+              <text x="320" y="458" text-anchor="middle" class="small-label mono">shared layers + router / replicated</text>
+              <rect x="173" y="485" width="139" height="35" class="ppep-expert" />
+              <rect x="328" y="485" width="139" height="35" class="ppep-expert" />
+              <text x="242" y="507" text-anchor="middle" class="label mono">expert E2</text>
+              <text x="397" y="507" text-anchor="middle" class="label mono">expert E3</text>
+            </g>
+            <g aria-label="GPU three, pipeline stage one, expert rank one">
+              <rect x="635" y="390" width="330" height="145" class="ppep-card" />
+              <rect x="635" y="390" width="330" height="32" class="ppep-card-head" />
+              <text x="650" y="411" class="label mono">GPU 3 / PP 1 / EP 1</text>
+              <rect x="653" y="436" width="294" height="34" class="ppep-shared" />
+              <text x="800" y="458" text-anchor="middle" class="small-label mono">shared layers + router / replicated</text>
+              <rect x="653" y="485" width="139" height="35" class="ppep-expert" />
+              <rect x="808" y="485" width="139" height="35" class="ppep-expert" />
+              <text x="722" y="507" text-anchor="middle" class="label mono">expert E2</text>
+              <text x="877" y="507" text-anchor="middle" class="label mono">expert E3</text>
+            </g>
+          </g>
+
+          <g class="forward-only" aria-label="Forward pass">
+            <rect x="18" y="124" width="102" height="44" class="ppep-zero-box" />
+            <rect x="18" y="444" width="102" height="44" class="ppep-one-box" />
+            <text x="69" y="142" text-anchor="middle" class="tiny-label mono">input shard</text>
+            <text x="69" y="158" text-anchor="middle" class="label mono">x0</text>
+            <text x="69" y="462" text-anchor="middle" class="tiny-label mono">input shard</text>
+            <text x="69" y="478" text-anchor="middle" class="label mono">x1</text>
+            <path d="M 120 146 H 155" class="ppep-token-zero-path" marker-end="url(#ppep-blue-arrow)" />
+            <path d="M 120 466 H 155" class="ppep-token-one-path" marker-end="url(#ppep-green-arrow)" />
+
+            <path d="M 485 146 H 635" class="ppep-token-zero-path" marker-end="url(#ppep-blue-arrow)" />
+            <path d="M 485 466 H 635" class="ppep-token-one-path" marker-end="url(#ppep-green-arrow)" />
+            <text x="560" y="133" text-anchor="middle" class="ppep-boundary-label mono">residual-stream send</text>
+            <text x="560" y="453" text-anchor="middle" class="ppep-boundary-label mono">residual-stream send</text>
+
+            <path d="M 965 146 H 1000" class="ppep-token-zero-path" marker-end="url(#ppep-blue-arrow)" />
+            <path d="M 965 466 H 1000" class="ppep-token-one-path" marker-end="url(#ppep-green-arrow)" />
+            <rect x="1000" y="124" width="102" height="44" class="ppep-zero-box" />
+            <rect x="1000" y="444" width="102" height="44" class="ppep-one-box" />
+            <text x="1051" y="142" text-anchor="middle" class="tiny-label mono">loss</text>
+            <text x="1051" y="158" text-anchor="middle" class="label mono">L0</text>
+            <text x="1051" y="462" text-anchor="middle" class="tiny-label mono">loss</text>
+            <text x="1051" y="478" text-anchor="middle" class="label mono">L1</text>
+
+            <circle r="5" class="ppep-dot-zero">
+              <animateMotion dur="3s" repeatCount="indefinite" path="M 120 146 H 1000" />
+            </circle>
+            <circle r="5" class="ppep-dot-one">
+              <animateMotion dur="3s" begin="0.4s" repeatCount="indefinite" path="M 120 466 H 1000" />
+            </circle>
+
+            <g aria-label="Expert communication in pipeline stage zero">
+              <path d="M 200 215 V 390" class="ppep-token-zero-path" marker-start="url(#ppep-blue-arrow)" marker-end="url(#ppep-blue-arrow)" />
+              <path d="M 440 215 V 390" class="ppep-token-one-path" marker-start="url(#ppep-green-arrow)" marker-end="url(#ppep-green-arrow)" />
+              <rect x="238" y="273" width="164" height="58" class="ppep-a2a-box" />
+              <text x="320" y="297" text-anchor="middle" class="ppep-a2a-title mono">ALL-TO-ALL x2</text>
+              <text x="320" y="316" text-anchor="middle" class="ppep-a2a-detail mono">dispatch + return</text>
+              <circle r="5" class="ppep-dot-zero"><animateMotion dur="1.8s" repeatCount="indefinite" path="M 200 215 V 390" /></circle>
+              <circle r="5" class="ppep-dot-zero"><animateMotion dur="1.8s" begin="0.9s" repeatCount="indefinite" path="M 200 390 V 215" /></circle>
+              <circle r="5" class="ppep-dot-one"><animateMotion dur="1.8s" begin="0.25s" repeatCount="indefinite" path="M 440 390 V 215" /></circle>
+              <circle r="5" class="ppep-dot-one"><animateMotion dur="1.8s" begin="1.15s" repeatCount="indefinite" path="M 440 215 V 390" /></circle>
+            </g>
+
+            <g aria-label="Expert communication in pipeline stage one">
+              <path d="M 680 215 V 390" class="ppep-token-zero-path" marker-start="url(#ppep-blue-arrow)" marker-end="url(#ppep-blue-arrow)" />
+              <path d="M 920 215 V 390" class="ppep-token-one-path" marker-start="url(#ppep-green-arrow)" marker-end="url(#ppep-green-arrow)" />
+              <rect x="718" y="273" width="164" height="58" class="ppep-a2a-box" />
+              <text x="800" y="297" text-anchor="middle" class="ppep-a2a-title mono">ALL-TO-ALL x2</text>
+              <text x="800" y="316" text-anchor="middle" class="ppep-a2a-detail mono">dispatch + return</text>
+              <circle r="5" class="ppep-dot-zero"><animateMotion dur="1.8s" begin="0.35s" repeatCount="indefinite" path="M 680 215 V 390" /></circle>
+              <circle r="5" class="ppep-dot-zero"><animateMotion dur="1.8s" begin="1.25s" repeatCount="indefinite" path="M 680 390 V 215" /></circle>
+              <circle r="5" class="ppep-dot-one"><animateMotion dur="1.8s" begin="0.6s" repeatCount="indefinite" path="M 920 390 V 215" /></circle>
+              <circle r="5" class="ppep-dot-one"><animateMotion dur="1.8s" begin="1.5s" repeatCount="indefinite" path="M 920 215 V 390" /></circle>
+            </g>
+
+            <text x="560" y="585" text-anchor="middle" class="small-label mono">horizontal = pipeline sends / vertical = expert-group exchanges</text>
+          </g>
+
+          <g class="backward-only" aria-label="Backward pass">
+            <rect x="1000" y="124" width="102" height="44" class="ppep-gradient-box" />
+            <rect x="1000" y="444" width="102" height="44" class="ppep-gradient-box" />
+            <text x="1051" y="142" text-anchor="middle" class="tiny-label mono">loss grad</text>
+            <text x="1051" y="158" text-anchor="middle" class="label mono">dL0</text>
+            <text x="1051" y="462" text-anchor="middle" class="tiny-label mono">loss grad</text>
+            <text x="1051" y="478" text-anchor="middle" class="label mono">dL1</text>
+
+            <path d="M 1000 146 H 965" class="ppep-gradient-path" marker-end="url(#ppep-comm-arrow)" />
+            <path d="M 1000 466 H 965" class="ppep-gradient-path" marker-end="url(#ppep-comm-arrow)" />
+            <path d="M 635 146 H 485" class="ppep-gradient-path" marker-end="url(#ppep-comm-arrow)" />
+            <path d="M 635 466 H 485" class="ppep-gradient-path" marker-end="url(#ppep-comm-arrow)" />
+            <text x="560" y="133" text-anchor="middle" class="ppep-boundary-label mono">input-gradient send</text>
+            <text x="560" y="453" text-anchor="middle" class="ppep-boundary-label mono">input-gradient send</text>
+
+            <path d="M 155 146 H 120" class="ppep-gradient-path" marker-end="url(#ppep-comm-arrow)" />
+            <path d="M 155 466 H 120" class="ppep-gradient-path" marker-end="url(#ppep-comm-arrow)" />
+            <rect x="18" y="124" width="102" height="44" class="ppep-gradient-box" />
+            <rect x="18" y="444" width="102" height="44" class="ppep-gradient-box" />
+            <text x="69" y="142" text-anchor="middle" class="tiny-label mono">input grad</text>
+            <text x="69" y="158" text-anchor="middle" class="label mono">dx0</text>
+            <text x="69" y="462" text-anchor="middle" class="tiny-label mono">input grad</text>
+            <text x="69" y="478" text-anchor="middle" class="label mono">dx1</text>
+
+            <g aria-label="Backward expert communication in pipeline stage zero">
+              <path d="M 195 215 V 390" class="ppep-token-zero-path" marker-start="url(#ppep-blue-arrow)" marker-end="url(#ppep-blue-arrow)" />
+              <path d="M 445 215 V 390" class="ppep-token-one-path" marker-start="url(#ppep-green-arrow)" marker-end="url(#ppep-green-arrow)" />
+              <rect x="238" y="248" width="164" height="48" class="ppep-a2a-box" />
+              <text x="320" y="268" text-anchor="middle" class="ppep-a2a-title mono">INVERSE A2A x2</text>
+              <text x="320" y="284" text-anchor="middle" class="ppep-a2a-detail mono">expert-token gradients</text>
+
+              <path d="M 320 215 V 390" class="ppep-gradient-path" marker-start="url(#ppep-comm-arrow)" marker-end="url(#ppep-comm-arrow)" />
+              <rect x="238" y="315" width="164" height="48" class="ppep-allreduce-box" />
+              <text x="320" y="335" text-anchor="middle" class="ppep-allreduce-title mono">ALL-REDUCE</text>
+              <text x="320" y="351" text-anchor="middle" class="ppep-allreduce-detail mono">shared + router grads</text>
+
+              <rect x="173" y="116" width="294" height="34" class="ppep-shared-grad-outline" />
+              <rect x="173" y="436" width="294" height="34" class="ppep-shared-grad-outline" />
+              <circle r="5" class="ppep-dot-zero"><animateMotion dur="1.8s" repeatCount="indefinite" path="M 195 390 V 215" /></circle>
+              <circle r="5" class="ppep-dot-one"><animateMotion dur="1.8s" begin="0.45s" repeatCount="indefinite" path="M 445 215 V 390" /></circle>
+              <circle r="5" class="ppep-dot-grad"><animateMotion dur="1.5s" begin="0.2s" repeatCount="indefinite" path="M 320 215 V 390" /></circle>
+              <text x="320" y="550" text-anchor="middle" class="ppep-local-note mono">expert gradients stay local</text>
+            </g>
+
+            <g aria-label="Backward expert communication in pipeline stage one">
+              <path d="M 675 215 V 390" class="ppep-token-zero-path" marker-start="url(#ppep-blue-arrow)" marker-end="url(#ppep-blue-arrow)" />
+              <path d="M 925 215 V 390" class="ppep-token-one-path" marker-start="url(#ppep-green-arrow)" marker-end="url(#ppep-green-arrow)" />
+              <rect x="718" y="248" width="164" height="48" class="ppep-a2a-box" />
+              <text x="800" y="268" text-anchor="middle" class="ppep-a2a-title mono">INVERSE A2A x2</text>
+              <text x="800" y="284" text-anchor="middle" class="ppep-a2a-detail mono">expert-token gradients</text>
+
+              <path d="M 800 215 V 390" class="ppep-gradient-path" marker-start="url(#ppep-comm-arrow)" marker-end="url(#ppep-comm-arrow)" />
+              <rect x="718" y="315" width="164" height="48" class="ppep-allreduce-box" />
+              <text x="800" y="335" text-anchor="middle" class="ppep-allreduce-title mono">ALL-REDUCE</text>
+              <text x="800" y="351" text-anchor="middle" class="ppep-allreduce-detail mono">shared + router grads</text>
+
+              <rect x="653" y="116" width="294" height="34" class="ppep-shared-grad-outline" />
+              <rect x="653" y="436" width="294" height="34" class="ppep-shared-grad-outline" />
+              <circle r="5" class="ppep-dot-zero"><animateMotion dur="1.8s" begin="0.3s" repeatCount="indefinite" path="M 675 390 V 215" /></circle>
+              <circle r="5" class="ppep-dot-one"><animateMotion dur="1.8s" begin="0.75s" repeatCount="indefinite" path="M 925 215 V 390" /></circle>
+              <circle r="5" class="ppep-dot-grad"><animateMotion dur="1.5s" begin="0.55s" repeatCount="indefinite" path="M 800 390 V 215" /></circle>
+              <text x="800" y="550" text-anchor="middle" class="ppep-local-note mono">expert gradients stay local</text>
+            </g>
+
+            <circle r="5" class="ppep-dot-grad"><animateMotion dur="2.3s" repeatCount="indefinite" path="M 1000 146 H 155" /></circle>
+            <circle r="5" class="ppep-dot-grad"><animateMotion dur="2.3s" begin="0.5s" repeatCount="indefinite" path="M 1000 466 H 155" /></circle>
+            <text x="560" y="585" text-anchor="middle" class="small-label mono">pipeline gradients move left; EP communication stays vertical inside each stage</text>
+          </g>
+        </svg>
+      </section>
+
+      <nav class="phase-tabs" aria-label="Pass phase">
+        <button type="button" data-phase-target="forward" aria-pressed="true">forward</button>
+        <button type="button" data-phase-target="backward" aria-pressed="false">backward</button>
+      </nav>
+    </main>
+
+    <script>
+      (() => {
+        const root = document.querySelector(".parallel-draft");
+        const buttons = Array.from(root.querySelectorAll("[data-phase-target]"));
+
+        function setPhase(phase) {
+          if (phase !== "forward" && phase !== "backward") return;
+          root.dataset.phase = phase;
+          buttons.forEach((button) => {
+            button.setAttribute("aria-pressed", String(button.dataset.phaseTarget === phase));
+          });
+          document.title = `PP x EP composition - ${phase}`;
+        }
+
+        buttons.forEach((button) => {
+          button.addEventListener("click", () => setPhase(button.dataset.phaseTarget));
+        });
+
+        const requestedPhase = new URLSearchParams(window.location.search).get("phase");
+        setPhase(requestedPhase === "backward" ? "backward" : "forward");
+        window.setPhase = setPhase;
+      })();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,322 @@
+:root {
+  color-scheme: light;
+  --paper: #eeeee8;
+  --paper-deep: #e5e5de;
+  --ink: #171916;
+  --muted: #767a73;
+  --hairline: #b9bcb5;
+  --blue: #4d91c7;
+  --blue-soft: #dbeaf4;
+  --green: #5c9c74;
+  --green-soft: #dceadf;
+  --comm: #e06d3f;
+  --comm-soft: #f5ddd3;
+  --yellow: #d6aa38;
+  --white: #fafaf7;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--paper-deep);
+  color: var(--ink);
+  font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+button {
+  font: inherit;
+}
+
+.parallel-draft {
+  width: min(960px, 100%);
+  margin: 0 auto;
+  padding: 28px;
+  background: var(--paper);
+}
+
+.dp-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+
+.dp-kicker,
+.dp-chip,
+.phase-tabs button,
+.mono,
+svg text.mono {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+
+.dp-kicker {
+  font-size: 12px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.dp-chip {
+  border: 1px solid var(--hairline);
+  padding: 6px 9px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.stage {
+  position: relative;
+  width: 100%;
+}
+
+.stage svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.phase-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin-top: 10px;
+  border: 1px solid var(--hairline);
+}
+
+.phase-tabs button {
+  min-height: 46px;
+  border: 0;
+  border-right: 1px solid var(--hairline);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.phase-tabs button:last-child {
+  border-right: 0;
+}
+
+.phase-tabs button[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--white);
+}
+
+.phase-tabs button:focus-visible {
+  outline: 3px solid var(--blue);
+  outline-offset: 2px;
+}
+
+.phase-copy {
+  min-height: 74px;
+  padding: 15px 16px 2px;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.phase-copy strong {
+  font-weight: 650;
+}
+
+.phase-copy code {
+  padding: 2px 5px;
+  background: var(--white);
+  border: 1px solid #d9d9d2;
+  color: #c64048;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 0.9em;
+}
+
+.forward-only,
+.backward-only {
+  transition:
+    opacity 220ms ease,
+    visibility 220ms ease;
+}
+
+.parallel-draft[data-phase="forward"] .backward-only,
+.parallel-draft[data-phase="backward"] .forward-only {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.parallel-draft[data-phase="forward"] .forward-only,
+.parallel-draft[data-phase="backward"] .backward-only {
+  opacity: 1;
+  visibility: visible;
+}
+
+.structure {
+  fill: var(--white);
+  stroke: var(--ink);
+  stroke-width: 1.4;
+}
+
+.structure-soft {
+  fill: none;
+  stroke: var(--hairline);
+  stroke-width: 1.2;
+}
+
+.layer {
+  fill: var(--paper);
+  stroke: var(--hairline);
+  stroke-width: 1;
+}
+
+.layer-accent {
+  fill: var(--blue-soft);
+  stroke: var(--blue);
+  stroke-width: 1;
+}
+
+.label {
+  fill: var(--ink);
+  font-size: 13px;
+}
+
+.small-label {
+  fill: var(--muted);
+  font-size: 11px;
+}
+
+.tiny-label {
+  fill: var(--muted);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+}
+
+.allreduce-label {
+  fill: var(--comm);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+}
+
+.flow {
+  fill: none;
+  stroke: var(--blue);
+  stroke-width: 2;
+}
+
+.flow-green {
+  fill: none;
+  stroke: var(--green);
+  stroke-width: 2;
+}
+
+.local-backward {
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 1.7;
+}
+
+.comm-line {
+  fill: none;
+  stroke: var(--comm);
+  stroke-width: 3.5;
+}
+
+.comm-line-thin {
+  fill: none;
+  stroke: var(--comm);
+  stroke-width: 2;
+}
+
+.data-token {
+  fill: var(--blue);
+}
+
+.data-token-green {
+  fill: var(--green);
+}
+
+.grad-token {
+  fill: var(--comm);
+}
+
+.avg-token {
+  fill: var(--yellow);
+  stroke: var(--ink);
+  stroke-width: 0.7;
+}
+
+.comm-fill {
+  fill: var(--comm-soft);
+  stroke: var(--comm);
+  stroke-width: 1.4;
+}
+
+.gpu-fill {
+  fill: #e2eee4;
+  stroke: var(--ink);
+  stroke-width: 1.4;
+}
+
+.loss-fill {
+  fill: var(--blue-soft);
+  stroke: var(--blue);
+  stroke-width: 1.2;
+}
+
+.pulse {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pulse 1.3s ease-in-out infinite;
+}
+
+.spin {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: spin 4s linear infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(0.84);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse,
+  .spin {
+    animation: none;
+  }
+
+  .forward-only,
+  .backward-only {
+    transition: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .parallel-draft {
+    padding: 16px;
+  }
+
+  .dp-head {
+    align-items: flex-start;
+    flex-direction: column;
+    margin-bottom: 4px;
+  }
+
+  .phase-copy {
+    font-size: 13px;
+  }
+}

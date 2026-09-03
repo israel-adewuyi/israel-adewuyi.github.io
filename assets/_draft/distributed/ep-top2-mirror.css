@@ -1,0 +1,130 @@
+.ep-draft {
+  width: min(940px, 100%);
+}
+
+.ep-stage {
+  margin-top: 2px;
+}
+
+.ep-rank-frame {
+  fill: rgba(250, 250, 247, 0.58);
+  stroke: var(--hairline);
+  stroke-width: 1.2;
+  stroke-dasharray: 5 6;
+}
+
+.ep-source,
+.ep-router,
+.ep-combine {
+  fill: var(--white);
+  stroke: var(--ink);
+  stroke-width: 1.35;
+}
+
+.ep-router-head-zero {
+  fill: var(--blue-soft);
+  stroke: var(--ink);
+  stroke-width: 1.35;
+}
+
+.ep-router-head-one {
+  fill: var(--green-soft);
+  stroke: var(--ink);
+  stroke-width: 1.35;
+}
+
+.ep-expert {
+  fill: var(--paper);
+  stroke: var(--hairline);
+  stroke-width: 1;
+}
+
+.ep-expert-selected {
+  fill: var(--white);
+  stroke: var(--ink);
+  stroke-width: 1.25;
+}
+
+.ep-rank-label,
+.ep-column-label {
+  fill: var(--ink);
+  font-size: 11px;
+}
+
+.ep-token-label {
+  fill: var(--ink);
+  font-size: 13px;
+}
+
+.ep-assignment-zero {
+  fill: var(--blue);
+  font-size: 10px;
+}
+
+.ep-assignment-one {
+  fill: var(--green);
+  font-size: 10px;
+}
+
+.ep-route-band {
+  stroke: var(--hairline);
+  stroke-width: 1.1;
+  stroke-dasharray: 5 6;
+}
+
+.ep-a2a-label {
+  fill: var(--comm);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+}
+
+.ep-token-zero-path,
+.ep-token-one-path {
+  fill: none;
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ep-token-zero-path {
+  stroke: var(--blue);
+}
+
+.ep-token-one-path {
+  stroke: var(--green);
+}
+
+.ep-remote-path {
+  stroke-width: 3.1;
+  stroke-dasharray: 7 5;
+}
+
+.ep-dot-zero {
+  fill: var(--blue);
+  stroke: var(--ink);
+  stroke-width: 0.65;
+}
+
+.ep-dot-one {
+  fill: var(--green);
+  stroke: var(--ink);
+  stroke-width: 0.65;
+}
+
+.ep-allreduce-line {
+  fill: none;
+  stroke: var(--comm);
+  stroke-width: 3;
+}
+
+.ep-allreduce-box {
+  fill: var(--comm-soft);
+  stroke: var(--comm);
+  stroke-width: 1.4;
+}
+
+@media (max-width: 560px) {
+  .ep-draft {
+    padding: 12px;
+  }
+}

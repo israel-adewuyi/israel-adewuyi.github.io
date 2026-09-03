@@ -1,0 +1,152 @@
+.pp-ep-draft {
+  width: min(1120px, 100%);
+}
+
+.pp-ep-stage {
+  margin-top: 4px;
+}
+
+.ppep-stage-frame {
+  fill: rgba(250, 250, 247, 0.5);
+  stroke: var(--hairline);
+  stroke-width: 1.2;
+  stroke-dasharray: 5 6;
+}
+
+.ppep-card {
+  fill: var(--white);
+  stroke: var(--ink);
+  stroke-width: 1.35;
+}
+
+.ppep-card-head {
+  stroke: var(--ink);
+  stroke-width: 1.35;
+}
+
+.ppep-rank-zero .ppep-card-head {
+  fill: var(--blue-soft);
+}
+
+.ppep-rank-one .ppep-card-head {
+  fill: var(--green-soft);
+}
+
+.ppep-shared {
+  fill: var(--paper);
+  stroke: var(--hairline);
+  stroke-width: 1;
+}
+
+.ppep-expert {
+  fill: var(--white);
+  stroke: var(--ink);
+  stroke-width: 1;
+}
+
+.ppep-stage-label,
+.ppep-rank-label,
+.ppep-axis-label {
+  fill: var(--ink);
+  font-size: 11px;
+}
+
+.ppep-axis-line {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.2;
+}
+
+.ppep-token-zero-path,
+.ppep-token-one-path {
+  fill: none;
+  stroke-width: 2.2;
+}
+
+.ppep-token-zero-path {
+  stroke: var(--blue);
+}
+
+.ppep-token-one-path {
+  stroke: var(--green);
+}
+
+.ppep-gradient-path {
+  fill: none;
+  stroke: var(--comm);
+  stroke-width: 2.2;
+}
+
+.ppep-a2a-box,
+.ppep-allreduce-box {
+  fill: var(--comm-soft);
+  stroke: var(--comm);
+  stroke-width: 1.4;
+}
+
+.ppep-a2a-title,
+.ppep-allreduce-title {
+  fill: var(--comm);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.ppep-a2a-detail,
+.ppep-allreduce-detail {
+  fill: var(--ink);
+  font-size: 9px;
+}
+
+.ppep-zero-box {
+  fill: var(--blue-soft);
+  stroke: var(--blue);
+  stroke-width: 1.2;
+}
+
+.ppep-one-box {
+  fill: var(--green-soft);
+  stroke: var(--green);
+  stroke-width: 1.2;
+}
+
+.ppep-gradient-box {
+  fill: var(--comm-soft);
+  stroke: var(--comm);
+  stroke-width: 1.2;
+}
+
+.ppep-shared-grad-outline {
+  fill: none;
+  stroke: var(--comm);
+  stroke-width: 2;
+}
+
+.ppep-dot-zero {
+  fill: var(--blue);
+}
+
+.ppep-dot-one {
+  fill: var(--green);
+}
+
+.ppep-dot-grad {
+  fill: var(--comm);
+}
+
+.ppep-boundary-label {
+  fill: var(--muted);
+  font-size: 9px;
+  letter-spacing: 0.03em;
+}
+
+.ppep-local-note {
+  fill: var(--muted);
+  font-size: 9px;
+}
+
+@media (max-width: 560px) {
+  .pp-ep-draft {
+    padding: 12px;
+  }
+}

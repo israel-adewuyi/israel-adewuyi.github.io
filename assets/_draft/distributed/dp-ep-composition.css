@@ -1,0 +1,134 @@
+.dp-ep-draft {
+  width: min(1080px, 100%);
+}
+
+.dp-ep-stage {
+  margin-top: 4px;
+}
+
+.dpep-replica-frame {
+  fill: rgba(250, 250, 247, 0.5);
+  stroke: var(--hairline);
+  stroke-width: 1.2;
+  stroke-dasharray: 5 6;
+}
+
+.dpep-card {
+  fill: var(--white);
+  stroke: var(--ink);
+  stroke-width: 1.35;
+}
+
+.dpep-card-head {
+  stroke: var(--ink);
+  stroke-width: 1.35;
+}
+
+.dpep-ep-zero .dpep-card-head {
+  fill: var(--blue-soft);
+}
+
+.dpep-ep-one .dpep-card-head {
+  fill: var(--green-soft);
+}
+
+.dpep-shared {
+  fill: var(--paper);
+  stroke: var(--hairline);
+  stroke-width: 1;
+}
+
+.dpep-expert {
+  fill: var(--white);
+  stroke: var(--ink);
+  stroke-width: 1;
+}
+
+.dpep-input-zero {
+  fill: var(--blue-soft);
+  stroke: var(--blue);
+  stroke-width: 1;
+}
+
+.dpep-input-one {
+  fill: var(--green-soft);
+  stroke: var(--green);
+  stroke-width: 1;
+}
+
+.dpep-replica-label,
+.dpep-rank-label {
+  fill: var(--ink);
+  font-size: 11px;
+}
+
+.dpep-token-zero-path,
+.dpep-token-one-path,
+.dpep-comm-path {
+  fill: none;
+}
+
+.dpep-token-zero-path,
+.dpep-token-one-path {
+  stroke-width: 2.2;
+}
+
+.dpep-token-zero-path {
+  stroke: var(--blue);
+}
+
+.dpep-token-one-path {
+  stroke: var(--green);
+}
+
+.dpep-comm-path {
+  stroke: var(--comm);
+  stroke-width: 3;
+}
+
+.dpep-nonexpert-ar-path {
+  fill: none;
+  stroke: var(--comm);
+  stroke-width: 2;
+}
+
+.dpep-a2a-box,
+.dpep-expert-ar-box,
+.dpep-shared-ar-box {
+  fill: var(--comm-soft);
+  stroke: var(--comm);
+  stroke-width: 1.4;
+}
+
+.dpep-a2a-title,
+.dpep-ar-title {
+  fill: var(--comm);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.dpep-a2a-detail,
+.dpep-ar-detail,
+.dpep-forward-note {
+  fill: var(--muted);
+  font-size: 9px;
+}
+
+.dpep-zero-dot {
+  fill: var(--blue);
+}
+
+.dpep-one-dot {
+  fill: var(--green);
+}
+
+.dpep-comm-dot {
+  fill: var(--comm);
+}
+
+@media (max-width: 560px) {
+  .dp-ep-draft {
+    padding: 12px;
+  }
+}

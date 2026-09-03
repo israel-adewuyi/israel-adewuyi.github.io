@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pipeline parallelism · layer split</title>
+    <link rel="stylesheet" href="./parallel-mirror.css" />
+  </head>
+  <body>
+    <main
+      class="parallel-draft"
+      data-draft-name="Pipeline layer split"
+      data-phase="forward"
+      data-forward-copy="<strong>Forward:</strong> stage 0 computes the first half of the model, then sends the boundary activation <code>a₂</code> to stage 1."
+      data-backward-copy="<strong>Backward:</strong> stage 1 sends <code>∂L/∂a₂</code> back across the same boundary so stage 0 can continue backpropagation."
+    >
+      <header class="dp-head">
+        <span class="dp-kicker">Pipeline parallelism</span>
+        <!-- <span class="dp-chip">same microbatch · different layers</span> -->
+      </header>
+
+      <section class="stage" aria-label="Animated two-stage pipeline-parallel diagram">
+        <svg viewBox="0 0 900 430" role="img" aria-labelledby="pp-a-title pp-a-desc">
+          <title id="pp-a-title">Two-stage pipeline parallelism</title>
+          <desc id="pp-a-desc">
+            The forward pass sends activations from stage zero to stage one. The backward pass sends activation gradients from stage one back to stage
+            zero.
+          </desc>
+          <defs>
+            <marker id="ppa-blue-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#4d91c7" />
+            </marker>
+            <marker id="ppa-muted-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#767a73" />
+            </marker>
+            <marker id="ppa-comm-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#e06d3f" />
+            </marker>
+          </defs>
+
+          <line x1="472" y1="55" x2="472" y2="350" class="structure-soft" stroke-dasharray="4 7" />
+          <text x="472" y="42" text-anchor="middle" class="tiny-label mono">STAGE BOUNDARY</text>
+
+          <g aria-label="Pipeline stage zero">
+            <rect x="146" y="105" width="280" height="190" class="structure" />
+            <rect x="146" y="105" width="280" height="44" class="gpu-fill" />
+            <text x="165" y="132" class="label mono">GPU 0 · stage 0</text>
+            <rect x="182" y="177" width="88" height="70" class="layer" />
+            <rect x="302" y="177" width="88" height="70" class="layer" />
+            <text x="226" y="207" text-anchor="middle" class="small-label mono">layer 1</text>
+            <text x="226" y="226" text-anchor="middle" class="tiny-label mono">parameters W₁</text>
+            <text x="346" y="207" text-anchor="middle" class="small-label mono">layer 2</text>
+            <text x="346" y="226" text-anchor="middle" class="tiny-label mono">parameters W₂</text>
+          </g>
+
+          <g aria-label="Pipeline stage one">
+            <rect x="518" y="105" width="280" height="190" class="structure" />
+            <rect x="518" y="105" width="280" height="44" class="gpu-fill" />
+            <text x="537" y="132" class="label mono">GPU 1 · stage 1</text>
+            <rect x="554" y="177" width="88" height="70" class="layer" />
+            <rect x="674" y="177" width="88" height="70" class="layer" />
+            <text x="598" y="207" text-anchor="middle" class="small-label mono">layer 3</text>
+            <text x="598" y="226" text-anchor="middle" class="tiny-label mono">parameters W₃</text>
+            <text x="718" y="207" text-anchor="middle" class="small-label mono">layer 4</text>
+            <text x="718" y="226" text-anchor="middle" class="tiny-label mono">parameters W₄</text>
+          </g>
+
+          <g class="forward-only">
+            <rect x="25" y="181" width="91" height="62" class="loss-fill" />
+            <text x="70" y="207" text-anchor="middle" class="small-label mono">microbatch</text>
+            <text x="70" y="228" text-anchor="middle" class="label mono">x₀</text>
+            <path d="M 116 212 H 182" class="flow" marker-end="url(#ppa-blue-arrow)" />
+            <path d="M 270 212 H 302" class="flow" marker-end="url(#ppa-blue-arrow)" />
+            <path d="M 390 212 H 518" class="comm-line" marker-end="url(#ppa-comm-arrow)" />
+            <path d="M 642 212 H 674" class="flow" marker-end="url(#ppa-blue-arrow)" />
+            <path d="M 762 212 H 830" class="flow" marker-end="url(#ppa-blue-arrow)" />
+            <circle r="5" class="data-token">
+              <animateMotion dur="2.6s" repeatCount="indefinite" path="M 116 212 H 390" />
+            </circle>
+            <circle r="6" class="grad-token">
+              <animateMotion dur="1.15s" repeatCount="indefinite" path="M 390 212 H 518" />
+            </circle>
+            <circle r="5" class="data-token">
+              <animateMotion dur="2s" begin="0.7s" repeatCount="indefinite" path="M 518 212 H 830" />
+            </circle>
+            <rect x="830" y="181" width="47" height="62" class="loss-fill" />
+            <text x="853" y="207" text-anchor="middle" class="small-label mono">loss</text>
+            <text x="853" y="228" text-anchor="middle" class="label mono">L₀</text>
+            <rect x="402" y="314" width="140" height="43" class="comm-fill" />
+            <text x="472" y="332" text-anchor="middle" class="tiny-label mono">SEND ACTIVATION</text>
+            <text x="472" y="349" text-anchor="middle" class="label mono">a₂ →</text>
+          </g>
+
+          <g class="backward-only">
+            <rect x="816" y="181" width="61" height="62" class="comm-fill" />
+            <text x="846" y="207" text-anchor="middle" class="small-label mono">loss</text>
+            <text x="846" y="228" text-anchor="middle" class="label mono">∂L</text>
+            <path d="M 816 212 H 762" class="local-backward" marker-end="url(#ppa-muted-arrow)" />
+            <path d="M 674 212 H 642" class="local-backward" marker-end="url(#ppa-muted-arrow)" />
+            <path d="M 554 212 H 426" class="comm-line" marker-end="url(#ppa-comm-arrow)" />
+            <path d="M 302 212 H 270" class="local-backward" marker-end="url(#ppa-muted-arrow)" />
+            <path d="M 182 212 H 82" class="local-backward" marker-end="url(#ppa-muted-arrow)" />
+            <circle r="4.5" fill="#767a73">
+              <animateMotion dur="1.8s" repeatCount="indefinite" path="M 816 212 H 554" />
+            </circle>
+            <circle r="6" class="grad-token">
+              <animateMotion dur="1.15s" repeatCount="indefinite" path="M 554 212 H 426" />
+            </circle>
+            <circle r="4.5" fill="#767a73">
+              <animateMotion dur="1.8s" begin="0.65s" repeatCount="indefinite" path="M 426 212 H 82" />
+            </circle>
+            <rect x="25" y="181" width="57" height="62" class="structure" />
+            <text x="53" y="207" text-anchor="middle" class="small-label mono">input</text>
+            <text x="53" y="228" text-anchor="middle" class="label mono">∂x₀</text>
+            <rect x="386" y="314" width="172" height="43" class="comm-fill pulse" />
+            <text x="472" y="332" text-anchor="middle" class="tiny-label mono">SEND INPUT GRADIENT</text>
+            <text x="472" y="349" text-anchor="middle" class="label mono">← ∂L/∂a₂</text>
+          </g>
+        </svg>
+      </section>
+
+      <nav class="phase-tabs" aria-label="Pass phase">
+        <button type="button" data-phase-target="forward" aria-pressed="true">forward</button>
+        <button type="button" data-phase-target="backward" aria-pressed="false">backward</button>
+      </nav>
+      <div class="phase-copy" data-phase-copy aria-live="polite"></div>
+    </main>
+    <script src="./parallel-mirror.js"></script>
+  </body>
+</html>

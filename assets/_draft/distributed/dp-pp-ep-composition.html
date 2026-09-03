@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DP x PP x EP composition - forward</title>
+    <link rel="stylesheet" href="./parallel-mirror.css" />
+    <link rel="stylesheet" href="./dp-pp-ep-composition.css" />
+  </head>
+  <body>
+    <main class="parallel-draft dp-pp-ep-draft" data-phase="forward">
+      <header class="dp-head">
+        <span class="dp-kicker">Data x pipeline x expert parallelism</span>
+        <span class="dp-chip">2 DP replicas / 2 PP stages / 2 EP ranks / 8 GPUs</span>
+      </header>
+
+      <section class="stage dp-pp-ep-stage" aria-label="Animated three-dimensional parallelism composition">
+        <svg viewBox="0 0 1120 950" role="img" aria-labelledby="d3-title d3-desc">
+          <title id="d3-title">Two data-parallel replicas, each containing two pipeline stages and two expert ranks</title>
+          <desc id="d3-desc">
+            Four input shards enter the first pipeline stage across two data replicas. Pipeline transfers run
+            horizontally, expert All-to-All exchanges run vertically within each stage, and the backward pass uses
+            separate expert-gradient and non-expert-gradient AllReduces across the data replicas.
+          </desc>
+          <defs>
+            <marker id="d3-blue-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#4d91c7" />
+            </marker>
+            <marker id="d3-green-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#5c9c74" />
+            </marker>
+            <marker id="d3-comm-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#e06d3f" />
+            </marker>
+            <marker id="d3-ink-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#171916" />
+            </marker>
+          </defs>
+
+          <text x="560" y="17" text-anchor="middle" class="d3-axis-label mono">PP axis</text>
+          <path d="M 430 27 H 690" class="d3-axis-line" marker-end="url(#d3-ink-arrow)" />
+
+          <rect x="130" y="45" width="860" height="330" class="d3-replica-frame" />
+          <text x="150" y="69" class="d3-replica-label mono">DP replica 0 / input shards 0, 1</text>
+          <text x="335" y="94" text-anchor="middle" class="d3-stage-label mono">PP stage 0 / early layers</text>
+          <text x="775" y="94" text-anchor="middle" class="d3-stage-label mono">PP stage 1 / later layers</text>
+          <text x="119" y="137" text-anchor="end" class="d3-rank-label mono">EP 0</text>
+          <text x="119" y="307" text-anchor="end" class="d3-rank-label mono">EP 1</text>
+          <path d="M 107 156 V 326" class="d3-axis-line" marker-start="url(#d3-ink-arrow)" marker-end="url(#d3-ink-arrow)" />
+          <text x="83" y="241" text-anchor="middle" class="d3-axis-label mono" transform="rotate(-90 83 241)">EP axis</text>
+
+          <g class="d3-ep-zero" aria-label="Data replica zero, expert rank zero">
+            <g aria-label="GPU zero, data replica zero, pipeline stage zero, expert rank zero">
+              <rect x="170" y="110" width="320" height="86" class="d3-card" />
+              <rect x="170" y="110" width="320" height="27" class="d3-card-head" />
+              <text x="184" y="129" class="label mono">rank 0 / DP 0 / PP 0 / EP 0</text>
+              <rect x="184" y="149" width="130" height="33" class="d3-shared" />
+              <rect x="326" y="149" width="150" height="33" class="d3-expert" />
+              <text x="249" y="170" text-anchor="middle" class="tiny-label mono">shared + router</text>
+              <text x="401" y="170" text-anchor="middle" class="label mono">E0, E1</text>
+            </g>
+            <g aria-label="GPU two, data replica zero, pipeline stage one, expert rank zero">
+              <rect x="620" y="110" width="320" height="86" class="d3-card" />
+              <rect x="620" y="110" width="320" height="27" class="d3-card-head" />
+              <text x="634" y="129" class="label mono">rank 2 / DP 0 / PP 1 / EP 0</text>
+              <rect x="634" y="149" width="130" height="33" class="d3-shared" />
+              <rect x="776" y="149" width="150" height="33" class="d3-expert" />
+              <text x="699" y="170" text-anchor="middle" class="tiny-label mono">shared + router</text>
+              <text x="851" y="170" text-anchor="middle" class="label mono">E0, E1</text>
+            </g>
+          </g>
+
+          <g class="d3-ep-one" aria-label="Data replica zero, expert rank one">
+            <g aria-label="GPU one, data replica zero, pipeline stage zero, expert rank one">
+              <rect x="170" y="280" width="320" height="86" class="d3-card" />
+              <rect x="170" y="280" width="320" height="27" class="d3-card-head" />
+              <text x="184" y="299" class="label mono">rank 1 / DP 0 / PP 0 / EP 1</text>
+              <rect x="184" y="319" width="130" height="33" class="d3-shared" />
+              <rect x="326" y="319" width="150" height="33" class="d3-expert" />
+              <text x="249" y="340" text-anchor="middle" class="tiny-label mono">shared + router</text>
+              <text x="401" y="340" text-anchor="middle" class="label mono">E2, E3</text>
+            </g>
+            <g aria-label="GPU three, data replica zero, pipeline stage one, expert rank one">
+              <rect x="620" y="280" width="320" height="86" class="d3-card" />
+              <rect x="620" y="280" width="320" height="27" class="d3-card-head" />
+              <text x="634" y="299" class="label mono">rank 3 / DP 0 / PP 1 / EP 1</text>
+              <rect x="634" y="319" width="130" height="33" class="d3-shared" />
+              <rect x="776" y="319" width="150" height="33" class="d3-expert" />
+              <text x="699" y="340" text-anchor="middle" class="tiny-label mono">shared + router</text>
+              <text x="851" y="340" text-anchor="middle" class="label mono">E2, E3</text>
+            </g>
+          </g>
+
+          <g class="forward-only" aria-label="Forward pass through data replica zero">
+            <rect x="18" y="128" width="112" height="50" class="d3-zero-box" />
+            <rect x="18" y="298" width="112" height="50" class="d3-one-box" />
+            <text x="74" y="147" text-anchor="middle" class="tiny-label mono">input shard</text>
+            <text x="74" y="166" text-anchor="middle" class="label mono">0</text>
+            <text x="74" y="317" text-anchor="middle" class="tiny-label mono">input shard</text>
+            <text x="74" y="336" text-anchor="middle" class="label mono">1</text>
+            <path d="M 130 153 H 170" class="d3-zero-path" marker-end="url(#d3-blue-arrow)" />
+            <path d="M 130 323 H 170" class="d3-one-path" marker-end="url(#d3-green-arrow)" />
+            <path d="M 490 153 H 620" class="d3-zero-path" marker-end="url(#d3-blue-arrow)" />
+            <path d="M 490 323 H 620" class="d3-one-path" marker-end="url(#d3-green-arrow)" />
+            <text x="555" y="143" text-anchor="middle" class="d3-boundary-label mono">residual send</text>
+            <text x="555" y="313" text-anchor="middle" class="d3-boundary-label mono">residual send</text>
+            <path d="M 940 153 H 990" class="d3-zero-path" marker-end="url(#d3-blue-arrow)" />
+            <path d="M 940 323 H 990" class="d3-one-path" marker-end="url(#d3-green-arrow)" />
+            <rect x="990" y="128" width="112" height="50" class="d3-zero-box" />
+            <rect x="990" y="298" width="112" height="50" class="d3-one-box" />
+            <text x="1046" y="147" text-anchor="middle" class="tiny-label mono">loss</text>
+            <text x="1046" y="166" text-anchor="middle" class="label mono">L0</text>
+            <text x="1046" y="317" text-anchor="middle" class="tiny-label mono">loss</text>
+            <text x="1046" y="336" text-anchor="middle" class="label mono">L1</text>
+
+            <circle r="4.5" class="d3-zero-dot"><animateMotion dur="3s" repeatCount="indefinite" path="M 130 153 H 990" /></circle>
+            <circle r="4.5" class="d3-one-dot"><animateMotion dur="3s" begin="0.4s" repeatCount="indefinite" path="M 130 323 H 990" /></circle>
+
+            <path d="M 215 196 V 280" class="d3-zero-path" marker-start="url(#d3-blue-arrow)" marker-end="url(#d3-blue-arrow)" />
+            <path d="M 455 196 V 280" class="d3-one-path" marker-start="url(#d3-green-arrow)" marker-end="url(#d3-green-arrow)" />
+            <rect x="270" y="214" width="130" height="48" class="d3-a2a-box" />
+            <text x="335" y="234" text-anchor="middle" class="d3-comm-title mono">ALL-TO-ALL</text>
+            <text x="335" y="251" text-anchor="middle" class="d3-comm-detail mono">dispatch + combine</text>
+            <circle r="4.5" class="d3-zero-dot"><animateMotion dur="1.7s" repeatCount="indefinite" path="M 215 196 V 280" /></circle>
+            <circle r="4.5" class="d3-zero-dot"><animateMotion dur="1.7s" begin="0.85s" repeatCount="indefinite" path="M 215 280 V 196" /></circle>
+            <circle r="4.5" class="d3-one-dot"><animateMotion dur="1.7s" begin="0.45s" repeatCount="indefinite" path="M 455 280 V 196" /></circle>
+            <circle r="4.5" class="d3-one-dot"><animateMotion dur="1.7s" begin="1.3s" repeatCount="indefinite" path="M 455 196 V 280" /></circle>
+
+            <path d="M 665 196 V 280" class="d3-zero-path" marker-start="url(#d3-blue-arrow)" marker-end="url(#d3-blue-arrow)" />
+            <path d="M 905 196 V 280" class="d3-one-path" marker-start="url(#d3-green-arrow)" marker-end="url(#d3-green-arrow)" />
+            <rect x="720" y="214" width="130" height="48" class="d3-a2a-box" />
+            <text x="785" y="234" text-anchor="middle" class="d3-comm-title mono">ALL-TO-ALL</text>
+            <text x="785" y="251" text-anchor="middle" class="d3-comm-detail mono">dispatch + combine</text>
+            <circle r="4.5" class="d3-zero-dot"><animateMotion dur="1.7s" begin="0.3s" repeatCount="indefinite" path="M 665 196 V 280" /></circle>
+            <circle r="4.5" class="d3-zero-dot"><animateMotion dur="1.7s" begin="1.15s" repeatCount="indefinite" path="M 665 280 V 196" /></circle>
+            <circle r="4.5" class="d3-one-dot"><animateMotion dur="1.7s" begin="0.75s" repeatCount="indefinite" path="M 905 280 V 196" /></circle>
+            <circle r="4.5" class="d3-one-dot"><animateMotion dur="1.7s" begin="1.6s" repeatCount="indefinite" path="M 905 196 V 280" /></circle>
+          </g>
+
+          <g class="backward-only" aria-label="Backward pass through data replica zero">
+            <rect x="990" y="128" width="112" height="50" class="d3-gradient-box" />
+            <rect x="990" y="298" width="112" height="50" class="d3-gradient-box" />
+            <text x="1046" y="147" text-anchor="middle" class="tiny-label mono">loss grad</text>
+            <text x="1046" y="166" text-anchor="middle" class="label mono">dL0</text>
+            <text x="1046" y="317" text-anchor="middle" class="tiny-label mono">loss grad</text>
+            <text x="1046" y="336" text-anchor="middle" class="label mono">dL1</text>
+            <path d="M 990 153 H 940" class="d3-gradient-path" marker-end="url(#d3-comm-arrow)" />
+            <path d="M 990 323 H 940" class="d3-gradient-path" marker-end="url(#d3-comm-arrow)" />
+            <path d="M 620 153 H 490" class="d3-gradient-path" marker-end="url(#d3-comm-arrow)" />
+            <path d="M 620 323 H 490" class="d3-gradient-path" marker-end="url(#d3-comm-arrow)" />
+            <text x="555" y="143" text-anchor="middle" class="d3-boundary-label mono">input-gradient send</text>
+            <text x="555" y="313" text-anchor="middle" class="d3-boundary-label mono">input-gradient send</text>
+            <path d="M 170 153 H 130" class="d3-gradient-path" marker-end="url(#d3-comm-arrow)" />
+            <path d="M 170 323 H 130" class="d3-gradient-path" marker-end="url(#d3-comm-arrow)" />
+            <rect x="18" y="128" width="112" height="50" class="d3-gradient-box" />
+            <rect x="18" y="298" width="112" height="50" class="d3-gradient-box" />
+            <text x="74" y="147" text-anchor="middle" class="tiny-label mono">input grad</text>
+            <text x="74" y="166" text-anchor="middle" class="label mono">dx0</text>
+            <text x="74" y="317" text-anchor="middle" class="tiny-label mono">input grad</text>
+            <text x="74" y="336" text-anchor="middle" class="label mono">dx1</text>
+
+            <circle r="4.5" class="d3-gradient-dot"><animateMotion dur="2.8s" repeatCount="indefinite" path="M 990 153 H 130" /></circle>
+            <circle r="4.5" class="d3-gradient-dot"><animateMotion dur="2.8s" begin="0.45s" repeatCount="indefinite" path="M 990 323 H 130" /></circle>
+
+            <path d="M 210 196 V 280" class="d3-zero-path" marker-start="url(#d3-blue-arrow)" marker-end="url(#d3-blue-arrow)" />
+            <path d="M 460 196 V 280" class="d3-one-path" marker-start="url(#d3-green-arrow)" marker-end="url(#d3-green-arrow)" />
+            <rect x="270" y="214" width="130" height="48" class="d3-a2a-box" />
+            <text x="335" y="234" text-anchor="middle" class="d3-comm-title mono">ALL-TO-ALL</text>
+            <text x="335" y="251" text-anchor="middle" class="d3-comm-detail mono">token-gradient routing</text>
+            <circle r="4.5" class="d3-zero-dot"><animateMotion dur="1.7s" repeatCount="indefinite" path="M 210 280 V 196" /></circle>
+            <circle r="4.5" class="d3-zero-dot"><animateMotion dur="1.7s" begin="0.85s" repeatCount="indefinite" path="M 210 196 V 280" /></circle>
+            <circle r="4.5" class="d3-one-dot"><animateMotion dur="1.7s" begin="0.45s" repeatCount="indefinite" path="M 460 196 V 280" /></circle>
+            <circle r="4.5" class="d3-one-dot"><animateMotion dur="1.7s" begin="1.3s" repeatCount="indefinite" path="M 460 280 V 196" /></circle>
+
+            <path d="M 660 196 V 280" class="d3-zero-path" marker-start="url(#d3-blue-arrow)" marker-end="url(#d3-blue-arrow)" />
+            <path d="M 910 196 V 280" class="d3-one-path" marker-start="url(#d3-green-arrow)" marker-end="url(#d3-green-arrow)" />
+            <rect x="720" y="214" width="130" height="48" class="d3-a2a-box" />
+            <text x="785" y="234" text-anchor="middle" class="d3-comm-title mono">ALL-TO-ALL</text>
+            <text x="785" y="251" text-anchor="middle" class="d3-comm-detail mono">token-gradient routing</text>
+            <circle r="4.5" class="d3-zero-dot"><animateMotion dur="1.7s" begin="0.3s" repeatCount="indefinite" path="M 660 280 V 196" /></circle>
+            <circle r="4.5" class="d3-zero-dot"><animateMotion dur="1.7s" begin="1.15s" repeatCount="indefinite" path="M 660 196 V 280" /></circle>
+            <circle r="4.5" class="d3-one-dot"><animateMotion dur="1.7s" begin="0.75s" repeatCount="indefinite" path="M 910 196 V 280" /></circle>
+            <circle r="4.5" class="d3-one-dot"><animateMotion dur="1.7s" begin="1.6s" repeatCount="indefinite" path="M 910 280 V 196" /></circle>
+          </g>
+
+          <g class="forward-only" aria-label="Data-parallel relationship in the forward pass">
+            <path d="M 560 395 V 555" class="d3-axis-line" marker-start="url(#d3-ink-arrow)" marker-end="url(#d3-ink-arrow)" />
+            <rect x="375" y="438" width="370" height="72" class="d3-neutral-box" />
+            <text x="560" y="464" text-anchor="middle" class="d3-axis-label mono">DP axis</text>
+            <text x="560" y="489" text-anchor="middle" class="small-label mono">independent batch shards / no forward communication</text>
+          </g>
+
+          <g class="backward-only" aria-label="Data-parallel gradient synchronization">
+            <path d="M 560 375 V 575" class="d3-gradient-path" marker-start="url(#d3-comm-arrow)" marker-end="url(#d3-comm-arrow)" />
+            <circle r="5" class="d3-gradient-dot"><animateMotion dur="1.8s" repeatCount="indefinite" path="M 560 375 V 575" /></circle>
+
+            <rect x="270" y="392" width="580" height="72" class="d3-dp-sync-box" />
+            <text x="560" y="415" text-anchor="middle" class="d3-comm-title mono">EXPERT-GRADIENT ALL-REDUCE</text>
+            <text x="560" y="436" text-anchor="middle" class="d3-comm-detail mono">fixed (PP, EP), across DP replicas</text>
+            <text x="560" y="454" text-anchor="middle" class="d3-group-detail mono">groups {0,4}  {1,5}  {2,6}  {3,7}</text>
+
+            <rect x="270" y="486" width="580" height="72" class="d3-dp-sync-box" />
+            <text x="560" y="509" text-anchor="middle" class="d3-comm-title mono">NON-EXPERT-GRADIENT ALL-REDUCE</text>
+            <text x="560" y="530" text-anchor="middle" class="d3-comm-detail mono">fixed PP, across DP and EP / shared + router parameters</text>
+            <text x="560" y="548" text-anchor="middle" class="d3-group-detail mono">groups {0,1,4,5}  {2,3,6,7}</text>
+          </g>
+
+          <rect x="130" y="575" width="860" height="330" class="d3-replica-frame" />
+          <text x="150" y="599" class="d3-replica-label mono">DP replica 1 / input shards 2, 3</text>
+          <text x="335" y="624" text-anchor="middle" class="d3-stage-label mono">PP stage 0 / early layers</text>
+          <text x="775" y="624" text-anchor="middle" class="d3-stage-label mono">PP stage 1 / later layers</text>
+          <text x="119" y="667" text-anchor="end" class="d3-rank-label mono">EP 0</text>
+          <text x="119" y="837" text-anchor="end" class="d3-rank-label mono">EP 1</text>
+          <path d="M 107 686 V 856" class="d3-axis-line" marker-start="url(#d3-ink-arrow)" marker-end="url(#d3-ink-arrow)" />
+          <text x="83" y="771" text-anchor="middle" class="d3-axis-label mono" transform="rotate(-90 83 771)">EP axis</text>
+
+          <g class="d3-ep-zero" aria-label="Data replica one, expert rank zero">
+            <g aria-label="GPU four, data replica one, pipeline stage zero, expert rank zero">
+              <rect x="170" y="640" width="320" height="86" class="d3-card" />
+              <rect x="170" y="640" width="320" height="27" class="d3-card-head" />
+              <text x="184" y="659" class="label mono">rank 4 / DP 1 / PP 0 / EP 0</text>
+              <rect x="184" y="679" width="130" height="33" class="d3-shared" />
+              <rect x="326" y="679" width="150" height="33" class="d3-expert" />
+              <text x="249" y="700" text-anchor="middle" class="tiny-label mono">shared + router</text>
+              <text x="401" y="700" text-anchor="middle" class="label mono">E0, E1</text>
+            </g>
+            <g aria-label="GPU six, data replica one, pipeline stage one, expert rank zero">
+              <rect x="620" y="640" width="320" height="86" class="d3-card" />
+              <rect x="620" y="640" width="320" height="27" class="d3-card-head" />
+              <text x="634" y="659" class="label mono">rank 6 / DP 1 / PP 1 / EP 0</text>
+              <rect x="634" y="679" width="130" height="33" class="d3-shared" />
+              <rect x="776" y="679" width="150" height="33" class="d3-expert" />
+              <text x="699" y="700" text-anchor="middle" class="tiny-label mono">shared + router</text>
+              <text x="851" y="700" text-anchor="middle" class="label mono">E0, E1</text>
+            </g>
+          </g>
+
+          <g class="d3-ep-one" aria-label="Data replica one, expert rank one">
+            <g aria-label="GPU five, data replica one, pipeline stage zero, expert rank one">
+              <rect x="170" y="810" width="320" height="86" class="d3-card" />
+              <rect x="170" y="810" width="320" height="27" class="d3-card-head" />
+              <text x="184" y="829" class="label mono">rank 5 / DP 1 / PP 0 / EP 1</text>
+              <rect x="184" y="849" width="130" height="33" class="d3-shared" />
+              <rect x="326" y="849" width="150" height="33" class="d3-expert" />
+              <text x="249" y="870" text-anchor="middle" class="tiny-label mono">shared + router</text>
+              <text x="401" y="870" text-anchor="middle" class="label mono">E2, E3</text>
+            </g>
+            <g aria-label="GPU seven, data replica one, pipeline stage one, expert rank one">
+              <rect x="620" y="810" width="320" height="86" class="d3-card" />
+              <rect x="620" y="810" width="320" height="27" class="d3-card-head" />
+              <text x="634" y="829" class="label mono">rank 7 / DP 1 / PP 1 / EP 1</text>
+              <rect x="634" y="849" width="130" height="33" class="d3-shared" />
+              <rect x="776" y="849" width="150" height="33" class="d3-expert" />
+              <text x="699" y="870" text-anchor="middle" class="tiny-label mono">shared + router</text>
+              <text x="851" y="870" text-anchor="middle" class="label mono">E2, E3</text>
+            </g>
+          </g>
+
+          <g class="forward-only" aria-label="Forward pass through data replica one">
+            <rect x="18" y="658" width="112" height="50" class="d3-zero-box" />
+            <rect x="18" y="828" width="112" height="50" class="d3-one-box" />
+            <text x="74" y="677" text-anchor="middle" class="tiny-label mono">input shard</text>
+            <text x="74" y="696" text-anchor="middle" class="label mono">2</text>
+            <text x="74" y="847" text-anchor="middle" class="tiny-label mono">input shard</text>
+            <text x="74" y="866" text-anchor="middle" class="label mono">3</text>
+            <path d="M 130 683 H 170" class="d3-zero-path" marker-end="url(#d3-blue-arrow)" />
+            <path d="M 130 853 H 170" class="d3-one-path" marker-end="url(#d3-green-arrow)" />
+            <path d="M 490 683 H 620" class="d3-zero-path" marker-end="url(#d3-blue-arrow)" />
+            <path d="M 490 853 H 620" class="d3-one-path" marker-end="url(#d3-green-arrow)" />
+            <text x="555" y="673" text-anchor="middle" class="d3-boundary-label mono">residual send</text>
+            <text x="555" y="843" text-anchor="middle" class="d3-boundary-label mono">residual send</text>
+            <path d="M 940 683 H 990" class="d3-zero-path" marker-end="url(#d3-blue-arrow)" />
+            <path d="M 940 853 H 990" class="d3-one-path" marker-end="url(#d3-green-arrow)" />
+            <rect x="990" y="658" width="112" height="50" class="d3-zero-box" />
+            <rect x="990" y="828" width="112" height="50" class="d3-one-box" />
+            <text x="1046" y="677" text-anchor="middle" class="tiny-label mono">loss</text>
+            <text x="1046" y="696" text-anchor="middle" class="label mono">L2</text>
+            <text x="1046" y="847" text-anchor="middle" class="tiny-label mono">loss</text>
+            <text x="1046" y="866" text-anchor="middle" class="label mono">L3</text>
+
+            <circle r="4.5" class="d3-zero-dot"><animateMotion dur="3s" begin="0.2s" repeatCount="indefinite" path="M 130 683 H 990" /></circle>
+            <circle r="4.5" class="d3-one-dot"><animateMotion dur="3s" begin="0.6s" repeatCount="indefinite" path="M 130 853 H 990" /></circle>
+
+            <path d="M 215 726 V 810" class="d3-zero-path" marker-start="url(#d3-blue-arrow)" marker-end="url(#d3-blue-arrow)" />
+            <path d="M 455 726 V 810" class="d3-one-path" marker-start="url(#d3-green-arrow)" marker-end="url(#d3-green-arrow)" />
+            <rect x="270" y="744" width="130" height="48" class="d3-a2a-box" />
+            <text x="335" y="764" text-anchor="middle" class="d3-comm-title mono">ALL-TO-ALL</text>
+            <text x="335" y="781" text-anchor="middle" class="d3-comm-detail mono">dispatch + combine</text>
+            <circle r="4.5" class="d3-zero-dot"><animateMotion dur="1.7s" begin="0.2s" repeatCount="indefinite" path="M 215 726 V 810" /></circle>
+            <circle r="4.5" class="d3-zero-dot"><animateMotion dur="1.7s" begin="1.05s" repeatCount="indefinite" path="M 215 810 V 726" /></circle>
+            <circle r="4.5" class="d3-one-dot"><animateMotion dur="1.7s" begin="0.65s" repeatCount="indefinite" path="M 455 810 V 726" /></circle>
+            <circle r="4.5" class="d3-one-dot"><animateMotion dur="1.7s" begin="1.5s" repeatCount="indefinite" path="M 455 726 V 810" /></circle>
+
+            <path d="M 665 726 V 810" class="d3-zero-path" marker-start="url(#d3-blue-arrow)" marker-end="url(#d3-blue-arrow)" />
+            <path d="M 905 726 V 810" class="d3-one-path" marker-start="url(#d3-green-arrow)" marker-end="url(#d3-green-arrow)" />
+            <rect x="720" y="744" width="130" height="48" class="d3-a2a-box" />
+            <text x="785" y="764" text-anchor="middle" class="d3-comm-title mono">ALL-TO-ALL</text>
+            <text x="785" y="781" text-anchor="middle" class="d3-comm-detail mono">dispatch + combine</text>
+            <circle r="4.5" class="d3-zero-dot"><animateMotion dur="1.7s" begin="0.5s" repeatCount="indefinite" path="M 665 726 V 810" /></circle>
+            <circle r="4.5" class="d3-zero-dot"><animateMotion dur="1.7s" begin="1.35s" repeatCount="indefinite" path="M 665 810 V 726" /></circle>
+            <circle r="4.5" class="d3-one-dot"><animateMotion dur="1.7s" begin="0.95s" repeatCount="indefinite" path="M 905 810 V 726" /></circle>
+            <circle r="4.5" class="d3-one-dot"><animateMotion dur="1.7s" begin="1.8s" repeatCount="indefinite" path="M 905 726 V 810" /></circle>
+          </g>
+
+          <g class="backward-only" aria-label="Backward pass through data replica one">
+            <rect x="990" y="658" width="112" height="50" class="d3-gradient-box" />
+            <rect x="990" y="828" width="112" height="50" class="d3-gradient-box" />
+            <text x="1046" y="677" text-anchor="middle" class="tiny-label mono">loss grad</text>
+            <text x="1046" y="696" text-anchor="middle" class="label mono">dL2</text>
+            <text x="1046" y="847" text-anchor="middle" class="tiny-label mono">loss grad</text>
+            <text x="1046" y="866" text-anchor="middle" class="label mono">dL3</text>
+            <path d="M 990 683 H 940" class="d3-gradient-path" marker-end="url(#d3-comm-arrow)" />
+            <path d="M 990 853 H 940" class="d3-gradient-path" marker-end="url(#d3-comm-arrow)" />
+            <path d="M 620 683 H 490" class="d3-gradient-path" marker-end="url(#d3-comm-arrow)" />
+            <path d="M 620 853 H 490" class="d3-gradient-path" marker-end="url(#d3-comm-arrow)" />
+            <text x="555" y="673" text-anchor="middle" class="d3-boundary-label mono">input-gradient send</text>
+            <text x="555" y="843" text-anchor="middle" class="d3-boundary-label mono">input-gradient send</text>
+            <path d="M 170 683 H 130" class="d3-gradient-path" marker-end="url(#d3-comm-arrow)" />
+            <path d="M 170 853 H 130" class="d3-gradient-path" marker-end="url(#d3-comm-arrow)" />
+            <rect x="18" y="658" width="112" height="50" class="d3-gradient-box" />
+            <rect x="18" y="828" width="112" height="50" class="d3-gradient-box" />
+            <text x="74" y="677" text-anchor="middle" class="tiny-label mono">input grad</text>
+            <text x="74" y="696" text-anchor="middle" class="label mono">dx2</text>
+            <text x="74" y="847" text-anchor="middle" class="tiny-label mono">input grad</text>
+            <text x="74" y="866" text-anchor="middle" class="label mono">dx3</text>
+
+            <circle r="4.5" class="d3-gradient-dot"><animateMotion dur="2.8s" begin="0.2s" repeatCount="indefinite" path="M 990 683 H 130" /></circle>
+            <circle r="4.5" class="d3-gradient-dot"><animateMotion dur="2.8s" begin="0.65s" repeatCount="indefinite" path="M 990 853 H 130" /></circle>
+
+            <path d="M 210 726 V 810" class="d3-zero-path" marker-start="url(#d3-blue-arrow)" marker-end="url(#d3-blue-arrow)" />
+            <path d="M 460 726 V 810" class="d3-one-path" marker-start="url(#d3-green-arrow)" marker-end="url(#d3-green-arrow)" />
+            <rect x="270" y="744" width="130" height="48" class="d3-a2a-box" />
+            <text x="335" y="764" text-anchor="middle" class="d3-comm-title mono">ALL-TO-ALL</text>
+            <text x="335" y="781" text-anchor="middle" class="d3-comm-detail mono">token-gradient routing</text>
+            <circle r="4.5" class="d3-zero-dot"><animateMotion dur="1.7s" begin="0.2s" repeatCount="indefinite" path="M 210 810 V 726" /></circle>
+            <circle r="4.5" class="d3-zero-dot"><animateMotion dur="1.7s" begin="1.05s" repeatCount="indefinite" path="M 210 726 V 810" /></circle>
+            <circle r="4.5" class="d3-one-dot"><animateMotion dur="1.7s" begin="0.65s" repeatCount="indefinite" path="M 460 726 V 810" /></circle>
+            <circle r="4.5" class="d3-one-dot"><animateMotion dur="1.7s" begin="1.5s" repeatCount="indefinite" path="M 460 810 V 726" /></circle>
+
+            <path d="M 660 726 V 810" class="d3-zero-path" marker-start="url(#d3-blue-arrow)" marker-end="url(#d3-blue-arrow)" />
+            <path d="M 910 726 V 810" class="d3-one-path" marker-start="url(#d3-green-arrow)" marker-end="url(#d3-green-arrow)" />
+            <rect x="720" y="744" width="130" height="48" class="d3-a2a-box" />
+            <text x="785" y="764" text-anchor="middle" class="d3-comm-title mono">ALL-TO-ALL</text>
+            <text x="785" y="781" text-anchor="middle" class="d3-comm-detail mono">token-gradient routing</text>
+            <circle r="4.5" class="d3-zero-dot"><animateMotion dur="1.7s" begin="0.5s" repeatCount="indefinite" path="M 660 810 V 726" /></circle>
+            <circle r="4.5" class="d3-zero-dot"><animateMotion dur="1.7s" begin="1.35s" repeatCount="indefinite" path="M 660 726 V 810" /></circle>
+            <circle r="4.5" class="d3-one-dot"><animateMotion dur="1.7s" begin="0.95s" repeatCount="indefinite" path="M 910 726 V 810" /></circle>
+            <circle r="4.5" class="d3-one-dot"><animateMotion dur="1.7s" begin="1.8s" repeatCount="indefinite" path="M 910 810 V 726" /></circle>
+          </g>
+
+          <text x="560" y="932" text-anchor="middle" class="small-label mono forward-only">DP replicas run independently; PP sends right; EP routes vertically within each stage</text>
+          <text x="560" y="932" text-anchor="middle" class="small-label mono backward-only">PP gradients move left; EP routes vertically; the two parameter families use different AllReduce groups</text>
+        </svg>
+      </section>
+
+      <nav class="phase-tabs" aria-label="Pass phase">
+        <button type="button" data-phase-target="forward" aria-pressed="true">forward</button>
+        <button type="button" data-phase-target="backward" aria-pressed="false">backward</button>
+      </nav>
+    </main>
+
+    <script>
+      (() => {
+        const root = document.querySelector(".parallel-draft");
+        const buttons = Array.from(root.querySelectorAll("[data-phase-target]"));
+
+        function setPhase(phase) {
+          if (phase !== "forward" && phase !== "backward") return;
+          root.dataset.phase = phase;
+          buttons.forEach((button) => {
+            button.setAttribute("aria-pressed", String(button.dataset.phaseTarget === phase));
+          });
+          document.title = `DP x PP x EP composition - ${phase}`;
+        }
+
+        buttons.forEach((button) => {
+          button.addEventListener("click", () => setPhase(button.dataset.phaseTarget));
+        });
+
+        const requestedPhase = new URLSearchParams(window.location.search).get("phase");
+        setPhase(requestedPhase === "backward" ? "backward" : "forward");
+        window.setPhase = setPhase;
+      })();
+    </script>
+  </body>
+</html>
