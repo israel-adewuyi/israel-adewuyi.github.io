@@ -126,5 +126,8 @@
     {% include scripts/progressBar.liquid %}
     {% include scripts/back_to_top.liquid %}
     {% include scripts/search.liquid %}
+    {% if page.auto_resize_iframes %}
+      <script defer src="{{ '/assets/js/auto-resize-iframes.js' | relative_url | bust_file_cache }}"></script>
+    {% endif %}
   </body>
 </html>

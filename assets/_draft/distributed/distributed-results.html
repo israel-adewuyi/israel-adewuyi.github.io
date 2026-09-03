@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>nanoTitan distributed-training results</title>
+  <link rel="stylesheet" href="./distributed-results.css">
+</head>
+<body>
+  <main id="results-viz" class="results-viz">
+    <header class="results-header">
+      <p id="results-kicker" class="results-kicker">nanoTitan benchmark</p>
+      <h1 id="results-title">Parallelism comparison</h1>
+      <p id="results-subtitle" class="results-subtitle"></p>
+    </header>
+
+    <aside id="regime-note" class="regime-note" aria-label="Experiment caveat" aria-live="polite" hidden>
+      <span class="regime-note__label">Caveat</span>
+      <span class="regime-note__comparison">
+        <span><strong>2–4 GPUs</strong> · RTX 3090 · 20 experts</span>
+        <span class="regime-note__eight"><strong>8 GPUs</strong> · RTX 3060 · 16 experts</span>
+      </span>
+    </aside>
+
+    <section id="overview-view" aria-labelledby="results-title">
+      <form class="results-controls" aria-label="Comparison controls">
+        <label>
+          <span>Metric</span>
+          <select id="metric-select">
+            <option value="throughput">Tokens per second</option>
+            <option value="step_time">Step time</option>
+            <option value="forward_time">Forward time</option>
+            <option value="non_forward_time">Backward time</option>
+            <option value="first_stage_memory">First-stage peak memory</option>
+            <option value="middle_stage_memory">Middle-stage peak memory</option>
+            <option value="last_stage_memory">Last-stage peak memory</option>
+          </select>
+        </label>
+        <label>
+          <span>Number of GPUs</span>
+          <select id="gpu-select">
+            <option value="2">2 GPUs</option>
+            <option value="4">4 GPUs</option>
+            <option value="8" selected>8 GPUs</option>
+          </select>
+        </label>
+      </form>
+      <div class="results-context">
+        <span id="workload-note"></span>
+        <span id="direction-note" class="direction-note"></span>
+      </div>
+      <p id="overview-method-note" class="method-note"></p>
+      <div id="overview-wrap" class="plot-wrap">
+        <svg id="overview-plot" role="img" aria-labelledby="overview-svg-title overview-svg-desc">
+          <title id="overview-svg-title">Parallelism strategy comparison</title>
+          <desc id="overview-svg-desc">A horizontal dot plot comparing experiment configurations for a selected metric and GPU count.</desc>
+        </svg>
+        <div id="overview-tooltip" class="results-tooltip" aria-hidden="true"></div>
+      </div>
+    </section>
+
+    <section id="detail-view" hidden aria-labelledby="results-title">
+      <form id="detail-controls" class="results-controls results-controls--single" aria-label="Section metric control">
+        <label>
+          <span>Metric</span>
+          <select id="detail-metric-select">
+            <option value="throughput">Tokens per second</option>
+            <option value="step_time" selected>Step time</option>
+            <option value="forward_time">Forward time</option>
+            <option value="non_forward_time">Backward time</option>
+            <option value="first_stage_memory">First-stage peak memory</option>
+            <option value="middle_stage_memory">Middle-stage peak memory</option>
+            <option value="last_stage_memory">Last-stage peak memory</option>
+          </select>
+        </label>
+      </form>
+      <div id="detail-legend" class="results-legend" aria-label="GPU count legend"></div>
+      <p id="detail-note" class="detail-note"></p>
+      <div id="detail-wrap" class="plot-wrap">
+        <svg id="detail-plot" role="img" aria-labelledby="detail-svg-title detail-svg-desc">
+          <title id="detail-svg-title">Experiment configuration comparison</title>
+          <desc id="detail-svg-desc">A horizontal dot plot comparing experiment configurations for the selected metric.</desc>
+        </svg>
+        <div id="detail-tooltip" class="results-tooltip" aria-hidden="true"></div>
+      </div>
+    </section>
+  </main>
+  <script src="./distributed-results-data.js"></script>
+  <script src="./distributed-results.js"></script>
+</body>
+</html>

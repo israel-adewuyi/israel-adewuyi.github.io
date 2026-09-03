@@ -17,6 +17,7 @@ body {
   display: grid;
   grid-template-columns: 270px minmax(0, 1fr);
   min-height: calc(100vh - var(--draft-bar-height));
+  transition: grid-template-columns 180ms ease;
 }
 .site--ledger .site-rail {
   position: sticky;
@@ -89,6 +90,43 @@ body {
 }
 .site--ledger .site-main {
   min-width: 0;
+}
+.site--ledger.is-sidebar-collapsed {
+  grid-template-columns: 76px minmax(0, 1fr);
+}
+.site--ledger.is-sidebar-collapsed .site-rail {
+  padding-right: 14px;
+  padding-left: 14px;
+}
+.site--ledger.is-sidebar-collapsed .sidebar-rail-head {
+  flex-direction: column;
+  align-items: center;
+}
+.site--ledger.is-sidebar-collapsed .site-mark {
+  display: block;
+  color: var(--ink);
+  font: 600 18px/1 Georgia, serif;
+  text-decoration: none;
+}
+.site--ledger.is-sidebar-collapsed .site-identity,
+.site--ledger.is-sidebar-collapsed .rail-status,
+.site--ledger.is-sidebar-collapsed .contact-card--sidebar {
+  display: none;
+}
+.site--ledger.is-sidebar-collapsed .site-nav {
+  width: 100%;
+  margin-top: 24px;
+}
+.site--ledger.is-sidebar-collapsed .nav-link {
+  grid-template-columns: 1fr;
+  justify-items: center;
+  font-size: 0;
+}
+.site--ledger.is-sidebar-collapsed .nav-link span {
+  font-size: 11px;
+}
+.site--ledger.is-sidebar-collapsed .sidebar-toggle__desktop {
+  transform: rotate(180deg);
 }
 .site--ledger .site-top {
   display: flex;
@@ -492,28 +530,6 @@ body {
   text-decoration: underline;
   text-underline-offset: 4px;
 }
-.site--ledger .site-contact {
-  min-height: 230px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 42px 4vw;
-  background: var(--blue);
-  color: #fff;
-}
-.site--ledger .site-contact > span {
-  font:
-    700 10px/1 Consolas,
-    monospace;
-  text-transform: uppercase;
-}
-.site--ledger .site-contact a {
-  margin-top: 18px;
-  font:
-    400 clamp(38px, 6vw, 72px) / 0.9 Georgia,
-    serif;
-  text-decoration: none;
-}
 .site--ledger .site-footer {
   background: var(--paper);
   color: var(--muted);
@@ -613,6 +629,9 @@ body {
   .site--ledger {
     grid-template-columns: 1fr;
   }
+  .site--ledger.is-sidebar-collapsed {
+    grid-template-columns: 1fr;
+  }
   .site--ledger .site-rail {
     position: sticky;
     z-index: 30;
@@ -623,6 +642,23 @@ body {
     border-right: 0;
     border-bottom: 1px solid var(--line);
   }
+  .site--ledger .sidebar-rail-head,
+  .site--ledger.is-sidebar-collapsed .sidebar-rail-head {
+    width: 100%;
+    flex-direction: row;
+    align-items: center;
+  }
+  .site--ledger .sidebar-toggle__desktop {
+    display: none;
+  }
+  .site--ledger .sidebar-toggle__mobile {
+    display: inline;
+  }
+  .site--ledger .sidebar-toggle {
+    width: auto;
+    min-width: 58px;
+    padding: 0 10px;
+  }
   .site--ledger .site-identity strong {
     font-size: 18px;
   }
@@ -631,16 +667,54 @@ body {
     display: none;
   }
   .site--ledger .site-nav {
-    display: flex;
-    margin: 0 0 0 auto;
-    border: 0;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    left: 0;
+    display: grid;
+    margin: 0;
+    padding: 10px 16px 18px;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    background: var(--wash);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-8px);
+    transition:
+      opacity 160ms ease,
+      transform 160ms ease,
+      visibility 160ms ease;
+    pointer-events: none;
+  }
+  .site--ledger.is-sidebar-open .site-nav {
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    pointer-events: auto;
   }
   .site--ledger .nav-link {
-    display: block;
-    padding: 8px;
-    border: 0;
+    display: grid;
+    grid-template-columns: 34px 1fr;
+    justify-items: stretch;
+    padding: 13px 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 11px;
   }
   .site--ledger .nav-link span {
+    display: inline;
+    font-size: 11px;
+  }
+  .site--ledger .sidebar-backdrop {
+    position: fixed;
+    z-index: 25;
+    top: calc(var(--draft-bar-height) + 58px);
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: block;
+    background: rgba(32, 33, 30, 0.3);
+  }
+  .site--ledger .sidebar-backdrop[hidden] {
     display: none;
   }
   .site--ledger .site-top {
@@ -677,9 +751,6 @@ body {
   }
 }
 @media (max-width: 560px) {
-  .site--ledger .site-nav .nav-link:nth-child(n + 4) {
-    display: none;
-  }
   .site--ledger .page-hero {
     padding: 56px 22px 44px;
   }

@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bucket size sweep</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      --paper: #eeeee8;
+      --ink: #171916;
+      --muted: #767a73;
+      --hairline: #b9bcb5;
+      --calls: #4d91c7;
+      --time: #e06d3f;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-width: 0; background: var(--paper); color: var(--ink); }
+    body { padding: clamp(14px, 3vw, 28px) clamp(8px, 2.5vw, 24px) 12px; }
+    .chart { width: 100%; max-width: 980px; margin: 0 auto; }
+    .chart-header { margin: 0 0 4px clamp(50px, 8.7vw, 82px); }
+    h1 { margin: 0; font: 400 clamp(17px, 2.6vw, 22px)/1.25 inherit; }
+
+    .subtitle {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: clamp(11px, 1.7vw, 13px);
+      line-height: 1.45;
+    }
+
+    .plot-wrap { position: relative; width: 100%; }
+    svg { display: block; width: 100%; height: auto; overflow: visible; }
+    .frame { fill: none; stroke: var(--hairline); stroke-width: 1; vector-effect: non-scaling-stroke; }
+    .tick { stroke: var(--hairline); stroke-width: 1; vector-effect: non-scaling-stroke; }
+    .grid { stroke: var(--hairline); stroke-width: 1; opacity: 0.48; vector-effect: non-scaling-stroke; }
+    .series { fill: none; stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+    .series-calls { stroke: var(--calls); }
+    .series-time { stroke: var(--time); }
+    .point { stroke: var(--ink); stroke-width: 1; vector-effect: non-scaling-stroke; cursor: pointer; }
+    .point-calls { fill: var(--calls); }
+    .point-time { fill: var(--time); }
+    .point-hit { fill: transparent; cursor: pointer; }
+    .point-group:hover .point, .point-group.is-active .point { stroke-width: 2.5; }
+    .tick-label, .axis-label, .value-label { font-family: inherit; }
+    .tick-label { fill: var(--muted); font-size: 12px; }
+    .axis-label { fill: var(--ink); font-size: 13px; }
+    .value-label { fill: var(--ink); font-size: 11px; }
+    .axis-label-calls, .value-calls { fill: var(--calls); }
+    .axis-label-time, .value-time { fill: var(--time); }
+
+    .tooltip {
+      position: absolute;
+      z-index: 2;
+      display: none;
+      min-width: 210px;
+      padding: 8px 10px;
+      border: 1px solid var(--hairline);
+      background: var(--ink);
+      color: var(--paper);
+      font-size: 12px;
+      line-height: 1.45;
+      pointer-events: none;
+      transform: translate(-50%, calc(-100% - 14px));
+    }
+
+    .tooltip.is-visible { display: block; }
+    .tooltip strong, .tooltip span { display: block; }
+    .tooltip strong { font-weight: 400; }
+    .tooltip span { opacity: 0.8; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+    @media (max-width: 480px) {
+      body { padding-left: 2px; padding-right: 2px; }
+      .chart-header { margin-left: 47px; }
+      .tick-label, .value-label { font-size: 11px; }
+      .axis-label { font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="chart">
+    <header class="chart-header">
+      <h1>Bucket size sweep</h1>
+      <p class="subtitle">AllReduce launches and average backward-pass time</p>
+    </header>
+
+    <div id="plot-wrap" class="plot-wrap">
+      <svg id="plot" viewBox="0 0 900 400" role="img" aria-labelledby="svg-title svg-description">
+        <title id="svg-title">Bucket size sweep</title>
+        <desc id="svg-description">
+          One dual-axis plot compares bucket size with the number of AllReduce calls on the left axis and
+          average backward-pass time in seconds on the right axis.
+        </desc>
+      </svg>
+      <div id="tooltip" class="tooltip" role="status" aria-live="polite"></div>
+    </div>
+
+    <table class="sr-only">
+      <caption>Bucket size sweep data</caption>
+      <thead>
+        <tr>
+          <th>Bucket size (MB)</th>
+          <th>Number of AllReduce calls</th>
+          <th>Average backward time (seconds)</th>
+        </tr>
+      </thead>
+      <tbody id="data-table"></tbody>
+    </table>
+  </main>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const data = [
+        { bucket: 0, calls: 194, backwardTime: 4.9806026220321655 },
+        { bucket: 1, calls: 91, backwardTime: 4.968035110235214 },
+        { bucket: 4, calls: 61, backwardTime: 4.96532443523407 },
+        { bucket: 16, calls: 54, backwardTime: 4.959789254665375 },
+        { bucket: 64, calls: 52, backwardTime: 4.951835780143738 },
+        { bucket: 256, calls: 10, backwardTime: 4.9691525495052336 },
+      ];
+
+      const NS = "http://www.w3.org/2000/svg";
+      const svg = document.getElementById("plot");
+      const wrap = document.getElementById("plot-wrap");
+      const tooltip = document.getElementById("tooltip");
+      const width = 900;
+      const height = 400;
+      const margin = { top: 35, right: 84, bottom: 65, left: 84 };
+      const innerWidth = width - margin.left - margin.right;
+      const innerHeight = height - margin.top - margin.bottom;
+      const xInset = 14;
+      const xPosition = (index) => {
+        if (data.length === 1) return margin.left + innerWidth / 2;
+        return margin.left + xInset + (index / (data.length - 1)) * (innerWidth - 2 * xInset);
+      };
+      const callsDomain = { min: 0, max: 210, ticks: [0, 50, 100, 150, 200] };
+      const timeDomain = { min: 4.948, max: 4.984, ticks: [4.95, 4.96, 4.97, 4.98] };
+
+      function element(name, attributes = {}, text = "") {
+        const node = document.createElementNS(NS, name);
+        Object.entries(attributes).forEach(([key, value]) => node.setAttribute(key, value));
+        if (text) node.textContent = text;
+        return node;
+      }
+
+      function yPosition(value, domain) {
+        const ratio = (value - domain.min) / (domain.max - domain.min);
+        return height - margin.bottom - ratio * innerHeight;
+      }
+
+      const gridLayer = element("g", { "aria-hidden": "true" });
+      const axisLayer = element("g", { "aria-hidden": "true" });
+      const dataLayer = element("g");
+      svg.append(gridLayer, axisLayer, dataLayer);
+
+      axisLayer.append(
+        element("rect", {
+          class: "frame",
+          x: margin.left,
+          y: margin.top,
+          width: innerWidth,
+          height: innerHeight,
+          "data-chart-frame": "",
+        }),
+        element("text", {
+          class: "axis-label axis-label-calls",
+          x: 19,
+          y: margin.top + innerHeight / 2,
+          transform: `rotate(-90 19 ${margin.top + innerHeight / 2})`,
+          "text-anchor": "middle",
+          "data-axis": "y",
+        }, "Number of AllReduce calls"),
+        element("text", {
+          class: "axis-label axis-label-time",
+          x: width - 19,
+          y: margin.top + innerHeight / 2,
+          transform: `rotate(90 ${width - 19} ${margin.top + innerHeight / 2})`,
+          "text-anchor": "middle",
+          "data-axis": "y",
+        }, "Average backward time (seconds)")
+      );
+
+      callsDomain.ticks.forEach((value) => {
+        const py = yPosition(value, callsDomain);
+        gridLayer.append(element("line", { class: "grid", x1: margin.left, y1: py, x2: width - margin.right, y2: py }));
+        axisLayer.append(
+          element("line", { class: "tick", x1: margin.left - 5, y1: py, x2: margin.left, y2: py }),
+          element("text", { class: "tick-label", x: margin.left - 10, y: py + 4, "text-anchor": "end" }, String(value))
+        );
+      });
+
+      timeDomain.ticks.forEach((value) => {
+        const py = yPosition(value, timeDomain);
+        axisLayer.append(
+          element("line", { class: "tick", x1: width - margin.right, y1: py, x2: width - margin.right + 5, y2: py }),
+          element("text", { class: "tick-label", x: width - margin.right + 10, y: py + 4, "text-anchor": "start" }, value.toFixed(2))
+        );
+      });
+
+      data.forEach((point, index) => {
+        const px = xPosition(index);
+        axisLayer.append(
+          element("line", { class: "tick", x1: px, y1: height - margin.bottom, x2: px, y2: height - margin.bottom + 5 }),
+          element("text", { class: "tick-label", x: px, y: height - margin.bottom + 23, "text-anchor": "middle" }, String(point.bucket))
+        );
+      });
+
+      axisLayer.append(element("text", {
+        class: "axis-label",
+        x: margin.left + innerWidth / 2,
+        y: 391,
+        "text-anchor": "middle",
+        "data-axis": "x",
+      }, "Bucket size (MB)"));
+
+      let activeIndex = null;
+
+      function drawSeries({ key, domain, seriesClass, pointClass, valueClass, valueFormat, labelOffset, shape }) {
+        const path = data.map((point, index) => {
+          const command = index === 0 ? "M" : "L";
+          return `${command}${xPosition(index)},${yPosition(point[key], domain)}`;
+        }).join(" ");
+        dataLayer.append(element("path", { class: `series ${seriesClass}`, d: path, "aria-hidden": "true" }));
+
+        data.forEach((point, index) => {
+          const px = xPosition(index);
+          const py = yPosition(point[key], domain);
+          const group = element("g", {
+            class: "point-group",
+            "data-index": index,
+            role: "img",
+            "aria-label": `${point.bucket} megabyte bucket: ${point.calls} AllReduce calls and ${point.backwardTime.toFixed(4)} seconds average backward time`,
+          });
+          const mark = shape === "diamond"
+            ? element("rect", {
+                class: `point ${pointClass}`,
+                x: px - 5,
+                y: py - 5,
+                width: 10,
+                height: 10,
+                transform: `rotate(45 ${px} ${py})`,
+              })
+            : element("circle", { class: `point ${pointClass}`, cx: px, cy: py, r: 6 });
+          group.append(
+            element("circle", { class: "point-hit", cx: px, cy: py, r: 18 }),
+            mark,
+            element("text", { class: `value-label ${valueClass}`, x: px, y: py + labelOffset, "text-anchor": "middle" }, valueFormat(point[key]))
+          );
+          group.addEventListener("pointerenter", () => showTooltip(index, px, py));
+          group.addEventListener("pointerleave", hideTooltip);
+          group.addEventListener("click", () => {
+            if (activeIndex === index) hideTooltip();
+            else showTooltip(index, px, py);
+          });
+          dataLayer.append(group);
+        });
+      }
+
+      drawSeries({
+        key: "calls",
+        domain: callsDomain,
+        seriesClass: "series-calls",
+        pointClass: "point-calls",
+        valueClass: "value-calls",
+        valueFormat: (value) => String(value),
+        labelOffset: -11,
+        shape: "circle",
+      });
+
+      drawSeries({
+        key: "backwardTime",
+        domain: timeDomain,
+        seriesClass: "series-time",
+        pointClass: "point-time",
+        valueClass: "value-time",
+        valueFormat: (value) => value.toFixed(3),
+        labelOffset: 20,
+        shape: "diamond",
+      });
+
+      const table = document.getElementById("data-table");
+      data.forEach((point) => {
+        const row = table.insertRow();
+        row.insertCell().textContent = String(point.bucket);
+        row.insertCell().textContent = String(point.calls);
+        row.insertCell().textContent = point.backwardTime.toFixed(6);
+      });
+
+      function showTooltip(index, px, py) {
+        activeIndex = index;
+        document.querySelectorAll(".point-group").forEach((group) => {
+          group.classList.toggle("is-active", Number(group.dataset.index) === index);
+        });
+
+        const point = data[index];
+        tooltip.innerHTML =
+          `<strong>${point.bucket} MB bucket</strong>` +
+          `<span>${point.calls} AllReduce calls</span>` +
+          `<span>${point.backwardTime.toFixed(4)} s average backward</span>`;
+        tooltip.classList.add("is-visible");
+
+        const svgRect = svg.getBoundingClientRect();
+        const wrapRect = wrap.getBoundingClientRect();
+        const left = (px / width) * svgRect.width + svgRect.left - wrapRect.left;
+        const top = (py / height) * svgRect.height + svgRect.top - wrapRect.top;
+        tooltip.style.left = `${left}px`;
+        tooltip.style.top = `${top}px`;
+
+        requestAnimationFrame(() => {
+          const half = tooltip.offsetWidth / 2;
+          const clamped = Math.max(half + 4, Math.min(wrap.clientWidth - half - 4, left));
+          tooltip.style.left = `${clamped}px`;
+        });
+      }
+
+      function hideTooltip() {
+        activeIndex = null;
+        document.querySelectorAll(".point-group").forEach((group) => group.classList.remove("is-active"));
+        tooltip.classList.remove("is-visible");
+      }
+
+      window.addEventListener("resize", hideTooltip);
+      document.addEventListener("pointerdown", (event) => {
+        if (!event.target.closest(".point-group")) hideTooltip();
+      });
+    })();
+  </script>
+</body>
+</html>

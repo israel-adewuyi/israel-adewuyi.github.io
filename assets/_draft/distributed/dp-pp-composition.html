@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DP x PP composition - forward</title>
+    <link rel="stylesheet" href="./parallel-mirror.css" />
+    <link rel="stylesheet" href="./dp-pp-composition.css" />
+  </head>
+  <body>
+    <main class="parallel-draft composition-draft" data-phase="forward">
+      <header class="dp-head">
+        <span class="dp-kicker">Data x pipeline parallelism</span>
+        <span class="dp-chip">2 DP replicas / 3 PP stages / 6 GPUs</span>
+      </header>
+
+      <section class="stage composition-stage" aria-label="Animated data- and pipeline-parallel composition">
+        <svg viewBox="0 0 1120 610" role="img" aria-labelledby="dppp-title dppp-desc">
+          <title id="dppp-title">Two data-parallel replicas, each split into three pipeline stages</title>
+          <desc id="dppp-desc">
+            Forward splits a global batch into two shards and pipelines each shard across three GPUs.
+            Backward sends activation gradients in reverse and AllReduces parameter gradients between matching pipeline stages.
+          </desc>
+          <defs>
+            <marker id="dppp-blue-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#4d91c7" />
+            </marker>
+            <marker id="dppp-green-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#5c9c74" />
+            </marker>
+            <marker id="dppp-muted-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#767a73" />
+            </marker>
+            <marker id="dppp-comm-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#e06d3f" />
+            </marker>
+          </defs>
+
+          <text x="310" y="25" text-anchor="middle" class="column-label mono">PP stage 0</text>
+          <text x="310" y="41" text-anchor="middle" class="tiny-label mono">W0 replicated</text>
+          <text x="585" y="25" text-anchor="middle" class="column-label mono">PP stage 1</text>
+          <text x="585" y="41" text-anchor="middle" class="tiny-label mono">W1 replicated</text>
+          <text x="860" y="25" text-anchor="middle" class="column-label mono">PP stage 2</text>
+          <text x="860" y="41" text-anchor="middle" class="tiny-label mono">W2 replicated</text>
+
+          <rect x="150" y="55" width="835" height="195" class="replica-frame" />
+          <rect x="150" y="360" width="835" height="195" class="replica-frame" />
+          <text x="165" y="75" class="replica-label mono">DP replica 0 / shard B0</text>
+          <text x="165" y="380" class="replica-label mono">DP replica 1 / shard B1</text>
+
+          <g class="replica-zero" aria-label="Data-parallel replica zero">
+            <g aria-label="GPU zero, pipeline stage zero">
+              <rect x="205" y="88" width="210" height="142" class="stage-card" />
+              <rect x="205" y="88" width="210" height="36" class="stage-card-head" />
+              <text x="220" y="111" class="label mono">GPU 0 / stage 0</text>
+              <rect x="223" y="141" width="75" height="57" class="stage-layer" />
+              <rect x="322" y="141" width="75" height="57" class="stage-layer" />
+              <text x="260" y="165" text-anchor="middle" class="small-label mono">layers</text>
+              <text x="260" y="184" text-anchor="middle" class="label mono">0-1</text>
+              <text x="359" y="165" text-anchor="middle" class="small-label mono">layers</text>
+              <text x="359" y="184" text-anchor="middle" class="label mono">2-3</text>
+            </g>
+            <g aria-label="GPU one, pipeline stage one">
+              <rect x="480" y="88" width="210" height="142" class="stage-card" />
+              <rect x="480" y="88" width="210" height="36" class="stage-card-head" />
+              <text x="495" y="111" class="label mono">GPU 1 / stage 1</text>
+              <rect x="498" y="141" width="75" height="57" class="stage-layer" />
+              <rect x="597" y="141" width="75" height="57" class="stage-layer" />
+              <text x="535" y="165" text-anchor="middle" class="small-label mono">layers</text>
+              <text x="535" y="184" text-anchor="middle" class="label mono">4-5</text>
+              <text x="634" y="165" text-anchor="middle" class="small-label mono">layers</text>
+              <text x="634" y="184" text-anchor="middle" class="label mono">6-7</text>
+            </g>
+            <g aria-label="GPU two, pipeline stage two">
+              <rect x="755" y="88" width="210" height="142" class="stage-card" />
+              <rect x="755" y="88" width="210" height="36" class="stage-card-head" />
+              <text x="770" y="111" class="label mono">GPU 2 / stage 2</text>
+              <rect x="773" y="141" width="75" height="57" class="stage-layer" />
+              <rect x="872" y="141" width="75" height="57" class="stage-layer" />
+              <text x="810" y="165" text-anchor="middle" class="small-label mono">layers</text>
+              <text x="810" y="184" text-anchor="middle" class="label mono">8-9</text>
+              <text x="909" y="165" text-anchor="middle" class="small-label mono">layers</text>
+              <text x="909" y="184" text-anchor="middle" class="label mono">10-11</text>
+            </g>
+          </g>
+
+          <g class="replica-one" aria-label="Data-parallel replica one">
+            <g aria-label="GPU three, pipeline stage zero">
+              <rect x="205" y="393" width="210" height="142" class="stage-card" />
+              <rect x="205" y="393" width="210" height="36" class="stage-card-head" />
+              <text x="220" y="416" class="label mono">GPU 3 / stage 0</text>
+              <rect x="223" y="446" width="75" height="57" class="stage-layer" />
+              <rect x="322" y="446" width="75" height="57" class="stage-layer" />
+              <text x="260" y="470" text-anchor="middle" class="small-label mono">layers</text>
+              <text x="260" y="489" text-anchor="middle" class="label mono">0-1</text>
+              <text x="359" y="470" text-anchor="middle" class="small-label mono">layers</text>
+              <text x="359" y="489" text-anchor="middle" class="label mono">2-3</text>
+            </g>
+            <g aria-label="GPU four, pipeline stage one">
+              <rect x="480" y="393" width="210" height="142" class="stage-card" />
+              <rect x="480" y="393" width="210" height="36" class="stage-card-head" />
+              <text x="495" y="416" class="label mono">GPU 4 / stage 1</text>
+              <rect x="498" y="446" width="75" height="57" class="stage-layer" />
+              <rect x="597" y="446" width="75" height="57" class="stage-layer" />
+              <text x="535" y="470" text-anchor="middle" class="small-label mono">layers</text>
+              <text x="535" y="489" text-anchor="middle" class="label mono">4-5</text>
+              <text x="634" y="470" text-anchor="middle" class="small-label mono">layers</text>
+              <text x="634" y="489" text-anchor="middle" class="label mono">6-7</text>
+            </g>
+            <g aria-label="GPU five, pipeline stage two">
+              <rect x="755" y="393" width="210" height="142" class="stage-card" />
+              <rect x="755" y="393" width="210" height="36" class="stage-card-head" />
+              <text x="770" y="416" class="label mono">GPU 5 / stage 2</text>
+              <rect x="773" y="446" width="75" height="57" class="stage-layer" />
+              <rect x="872" y="446" width="75" height="57" class="stage-layer" />
+              <text x="810" y="470" text-anchor="middle" class="small-label mono">layers</text>
+              <text x="810" y="489" text-anchor="middle" class="label mono">8-9</text>
+              <text x="909" y="470" text-anchor="middle" class="small-label mono">layers</text>
+              <text x="909" y="489" text-anchor="middle" class="label mono">10-11</text>
+            </g>
+          </g>
+
+          <g class="forward-only" aria-label="Forward pass">
+            <text x="70" y="205" text-anchor="middle" class="small-label mono">global batch</text>
+            <rect x="20" y="217" width="100" height="112" class="structure" />
+            <rect x="32" y="231" width="76" height="34" class="layer-accent" />
+            <rect x="32" y="281" width="76" height="34" fill="#dceadf" stroke="#5c9c74" />
+            <text x="70" y="253" text-anchor="middle" class="label mono">shard B0</text>
+            <text x="70" y="303" text-anchor="middle" class="label mono">shard B1</text>
+
+            <path d="M 120 248 C 155 248, 162 169, 223 169" class="flow" marker-end="url(#dppp-blue-arrow)" />
+            <path d="M 120 298 C 155 298, 162 474, 223 474" class="flow-green" marker-end="url(#dppp-green-arrow)" />
+
+            <path d="M 298 169 H 322" class="flow" marker-end="url(#dppp-blue-arrow)" />
+            <path d="M 397 169 H 498" class="flow" marker-end="url(#dppp-blue-arrow)" />
+            <path d="M 573 169 H 597" class="flow" marker-end="url(#dppp-blue-arrow)" />
+            <path d="M 672 169 H 773" class="flow" marker-end="url(#dppp-blue-arrow)" />
+            <path d="M 848 169 H 872" class="flow" marker-end="url(#dppp-blue-arrow)" />
+            <path d="M 947 169 H 1000" class="flow" marker-end="url(#dppp-blue-arrow)" />
+
+            <path d="M 298 474 H 322" class="flow-green" marker-end="url(#dppp-green-arrow)" />
+            <path d="M 397 474 H 498" class="flow-green" marker-end="url(#dppp-green-arrow)" />
+            <path d="M 573 474 H 597" class="flow-green" marker-end="url(#dppp-green-arrow)" />
+            <path d="M 672 474 H 773" class="flow-green" marker-end="url(#dppp-green-arrow)" />
+            <path d="M 848 474 H 872" class="flow-green" marker-end="url(#dppp-green-arrow)" />
+            <path d="M 947 474 H 1000" class="flow-green" marker-end="url(#dppp-green-arrow)" />
+
+            <text x="447" y="159" text-anchor="middle" class="activation-label mono">activation</text>
+            <text x="722" y="159" text-anchor="middle" class="activation-label mono">activation</text>
+            <text x="447" y="464" text-anchor="middle" class="activation-label mono">activation</text>
+            <text x="722" y="464" text-anchor="middle" class="activation-label mono">activation</text>
+
+            <circle r="5" class="data-token">
+              <animateMotion dur="3.5s" repeatCount="indefinite" path="M 120 248 C 155 248, 162 169, 223 169 H 1095" />
+            </circle>
+            <circle r="5" class="data-token-green">
+              <animateMotion dur="3.5s" begin="0.4s" repeatCount="indefinite" path="M 120 298 C 155 298, 162 474, 223 474 H 1095" />
+            </circle>
+
+            <rect x="1000" y="139" width="95" height="60" class="loss-fill" />
+            <rect x="1000" y="444" width="95" height="60" fill="#dceadf" stroke="#5c9c74" />
+            <text x="1047" y="164" text-anchor="middle" class="small-label mono">loss</text>
+            <text x="1047" y="184" text-anchor="middle" class="label mono">L0</text>
+            <text x="1047" y="469" text-anchor="middle" class="small-label mono">loss</text>
+            <text x="1047" y="489" text-anchor="middle" class="label mono">L1</text>
+            <text x="560" y="588" text-anchor="middle" class="small-label mono">each batch shard follows its own three-stage pipeline</text>
+          </g>
+
+          <g class="backward-only" aria-label="Backward pass">
+            <rect x="1000" y="139" width="95" height="60" class="comm-fill" />
+            <rect x="1000" y="444" width="95" height="60" class="comm-fill" />
+            <text x="1047" y="164" text-anchor="middle" class="small-label mono">loss grad</text>
+            <text x="1047" y="184" text-anchor="middle" class="label mono">dL0</text>
+            <text x="1047" y="469" text-anchor="middle" class="small-label mono">loss grad</text>
+            <text x="1047" y="489" text-anchor="middle" class="label mono">dL1</text>
+
+            <path d="M 1000 169 H 947" class="local-backward" marker-end="url(#dppp-muted-arrow)" />
+            <path d="M 872 169 H 848" class="local-backward" marker-end="url(#dppp-muted-arrow)" />
+            <path d="M 773 169 H 672" class="comm-line-thin" marker-end="url(#dppp-comm-arrow)" />
+            <path d="M 597 169 H 573" class="local-backward" marker-end="url(#dppp-muted-arrow)" />
+            <path d="M 498 169 H 397" class="comm-line-thin" marker-end="url(#dppp-comm-arrow)" />
+            <path d="M 322 169 H 298" class="local-backward" marker-end="url(#dppp-muted-arrow)" />
+            <path d="M 223 169 H 150" class="local-backward" marker-end="url(#dppp-muted-arrow)" />
+
+            <path d="M 1000 474 H 947" class="local-backward" marker-end="url(#dppp-muted-arrow)" />
+            <path d="M 872 474 H 848" class="local-backward" marker-end="url(#dppp-muted-arrow)" />
+            <path d="M 773 474 H 672" class="comm-line-thin" marker-end="url(#dppp-comm-arrow)" />
+            <path d="M 597 474 H 573" class="local-backward" marker-end="url(#dppp-muted-arrow)" />
+            <path d="M 498 474 H 397" class="comm-line-thin" marker-end="url(#dppp-comm-arrow)" />
+            <path d="M 322 474 H 298" class="local-backward" marker-end="url(#dppp-muted-arrow)" />
+            <path d="M 223 474 H 150" class="local-backward" marker-end="url(#dppp-muted-arrow)" />
+
+            <text x="722" y="159" text-anchor="middle" class="gradient-label mono">input-gradient send</text>
+            <text x="447" y="159" text-anchor="middle" class="gradient-label mono">input-gradient send</text>
+            <text x="722" y="464" text-anchor="middle" class="gradient-label mono">input-gradient send</text>
+            <text x="447" y="464" text-anchor="middle" class="gradient-label mono">input-gradient send</text>
+
+            <circle r="4.5" fill="#767a73">
+              <animateMotion dur="3.2s" repeatCount="indefinite" path="M 1000 169 H 150" />
+            </circle>
+            <circle r="4.5" fill="#767a73">
+              <animateMotion dur="3.2s" begin="0.4s" repeatCount="indefinite" path="M 1000 474 H 150" />
+            </circle>
+
+            <path d="M 310 230 V 393" class="comm-line" marker-start="url(#dppp-comm-arrow)" marker-end="url(#dppp-comm-arrow)" />
+            <path d="M 585 230 V 393" class="comm-line" marker-start="url(#dppp-comm-arrow)" marker-end="url(#dppp-comm-arrow)" />
+            <path d="M 860 230 V 393" class="comm-line" marker-start="url(#dppp-comm-arrow)" marker-end="url(#dppp-comm-arrow)" />
+
+            <rect x="245" y="280" width="130" height="62" class="allreduce-box" />
+            <rect x="520" y="280" width="130" height="62" class="allreduce-box" />
+            <rect x="795" y="280" width="130" height="62" class="allreduce-box" />
+            <text x="310" y="305" text-anchor="middle" class="allreduce-title mono">ALL-REDUCE</text>
+            <text x="310" y="326" text-anchor="middle" class="allreduce-detail mono">gradients dW0</text>
+            <text x="585" y="305" text-anchor="middle" class="allreduce-title mono">ALL-REDUCE</text>
+            <text x="585" y="326" text-anchor="middle" class="allreduce-detail mono">gradients dW1</text>
+            <text x="860" y="305" text-anchor="middle" class="allreduce-title mono">ALL-REDUCE</text>
+            <text x="860" y="326" text-anchor="middle" class="allreduce-detail mono">gradients dW2</text>
+
+            <circle r="5.5" class="grad-token">
+              <animateMotion dur="1.45s" begin="0.9s" repeatCount="indefinite" path="M 310 230 V 393" />
+            </circle>
+            <circle r="5.5" class="grad-token">
+              <animateMotion dur="1.45s" begin="0.45s" repeatCount="indefinite" path="M 585 393 V 230" />
+            </circle>
+            <circle r="5.5" class="grad-token">
+              <animateMotion dur="1.45s" repeatCount="indefinite" path="M 860 230 V 393" />
+            </circle>
+
+            <text x="560" y="588" text-anchor="middle" class="small-label mono">matching PP stages synchronize parameter gradients across DP replicas</text>
+          </g>
+        </svg>
+      </section>
+
+      <nav class="phase-tabs" aria-label="Pass phase">
+        <button type="button" data-phase-target="forward" aria-pressed="true">forward</button>
+        <button type="button" data-phase-target="backward" aria-pressed="false">backward</button>
+      </nav>
+    </main>
+
+    <script>
+      (() => {
+        const root = document.querySelector(".parallel-draft");
+        const buttons = Array.from(root.querySelectorAll("[data-phase-target]"));
+
+        function setPhase(phase) {
+          if (phase !== "forward" && phase !== "backward") return;
+          root.dataset.phase = phase;
+          buttons.forEach((button) => {
+            button.setAttribute("aria-pressed", String(button.dataset.phaseTarget === phase));
+          });
+          document.title = `DP x PP composition - ${phase}`;
+        }
+
+        buttons.forEach((button) => {
+          button.addEventListener("click", () => setPhase(button.dataset.phaseTarget));
+        });
+
+        const requestedPhase = new URLSearchParams(window.location.search).get("phase");
+        setPhase(requestedPhase === "backward" ? "backward" : "forward");
+        window.setPhase = setPhase;
+      })();
+    </script>
+  </body>
+</html>

@@ -4,34 +4,35 @@
   const variant = document.body.dataset.variant || "margin";
   const assetRoot = document.body.dataset.assetRoot || "../../../assets/img/";
   const routes = window.siteRoutes || {
-    home: "index.html",
-    research: "research.html",
-    writing: "writing.html",
-    publications: "publications.html",
-    about: "about.html",
-    cv: "cv.html",
+    home: "/",
+    projects: "/projects/",
+    publications: "/publications/",
+    cv: "/cv/",
   };
-  const links = [
-    ["Home", routes.home],
-    ["Research", routes.research],
-    ["Publications", routes.publications],
-    ["About", routes.about],
-    ["CV", routes.cv],
+  const links = window.siteNavigation || [
+    { key: "home", label: "Home", href: routes.home },
+    { key: "projects", label: "Projects", href: routes.projects },
+    { key: "publications", label: "Publications", href: routes.publications },
+    { key: "cv", label: "CV", href: routes.cv },
   ];
   const q = new URLSearchParams(window.location.search);
   const escape = (value) =>
     String(value).replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
   const date = (value) => new Intl.DateTimeFormat("en", { year: "numeric", month: "short", day: "numeric" }).format(new Date(`${value}T00:00:00`));
-  const active = (href) => page === href.replace(".html", "") || (page === "article" && href === "research.html");
+  const active = (key) => page === key || (page === "article" && key === "projects");
   const nav = () =>
     links
       .map(
-        ([label, href], index) =>
-          `<a class="nav-link ${active(href) ? "is-active" : ""}" href="${href}"><span>${String(index + 1).padStart(2, "0")}</span>${label}</a>`
+        ({ key, label, href }, index) =>
+          `<a class="nav-link ${active(key) ? "is-active" : ""}" href="${href}"${
+            active(key) ? ' aria-current="page"' : ""
+          }><span>${String(index + 1).padStart(2, "0")}</span>${label}</a>`
       )
       .join("");
   const articleUrl = (post) =>
     (window.siteArticleRoutes && window.siteArticleRoutes[post.slug]) || `article.html?slug=${encodeURIComponent(post.slug)}`;
+  const contactBlock = (modifier) =>
+    `<div class="contact-card ${modifier}" aria-label="Contact"><span class="contact-card__command">$ contact</span><p>Want to chat?</p><div class="contact-card__links"><a href="mailto:${data.identity.email}">Email &nearr;</a><a href="https://github.com/israel-adewuyi" target="_blank" rel="noreferrer">GitHub &nearr;</a><a href="https://x.com/Israel_Adewuyi_" target="_blank" rel="noreferrer">X &nearr;</a></div></div>`;
   const postRow = (post, extra = "") =>
     `<a class="post-row" href="${articleUrl(post)}"><time>${date(post.date)}</time><div><h3>${escape(post.title)}</h3><p>${escape(
       post.description
@@ -54,11 +55,11 @@
     )}</h1><div class="hero-foot"><p>${escape(data.identity.intro)}</p></div></header>
       <section class="section current-section"><span class="section-label">00 / Current focus</span><div class="section-body"><ol class="focus-list"><li><span>01</span><div><strong>Reinforcement learning</strong><p>Current methods understandably favor stable optimization, but may leave too much of the policy space unexplored.</p></div></li><li><span>02</span><div><strong>Distributed training</strong><p>Hardware limits should be baseline for both training and inference.</p></div></li><li><span>03</span><div><strong>Mechanistic interpretability</strong><p>We can eventually understand and map the components that produce a model's behavior.</p></div></li><li><span>04</span><div><strong>Representation learning</strong><p>Understanding how information is encoded is necessary for understanding why a model acts as it does.</p></div></li></ol></div></section>
       <section class="section" id="featured"><span class="section-label">01 / Selected work</span><div class="section-body"><div class="post-list">${featured}</div><a class="section-link" href="${
-        routes.research
-      }">View research archive &rarr;</a></div></section>`;
+        routes.projects
+      }">View projects &rarr;</a>${contactBlock("contact-card--mobile")}</div></section>`;
   };
-  const research = () =>
-    `<header class="page-hero page-hero--compact"><p class="prompt">$ find ./research -type investigation</p><h1>Research archive</h1><p>Experiments, replications, and technical notes on questions I am curious about.</p></header><section class="section"><span class="section-label">01 / Investigations</span><div class="section-body"><div class="post-list post-list--full">${data.posts
+  const projects = () =>
+    `<header class="page-hero page-hero--compact"><p class="prompt">$ find ./projects -type project</p><h1>Projects</h1><p>Technical write-ups, experiments, replications, and engineering work.</p></header><section class="section"><span class="section-label">01 / Projects</span><div class="section-body"><div class="post-list post-list--full">${data.posts
       .map((post) => postRow(post))
       .join("")}</div></div></section>`;
   const publications = () =>
@@ -85,7 +86,7 @@
                   ? "ner_with_rl"
                   : post.slug
           }/" target="_blank" rel="noreferrer">Open current full article &nearr;</a></div>`;
-    return `<header class="article-hero"><p class="prompt">$ open ./writing/${escape(post.slug)}</p><p class="article-meta">${date(
+    return `<header class="article-hero"><p class="prompt">$ open ./projects/${escape(post.slug)}</p><p class="article-meta">${date(
       post.date
     )} / ${escape(post.topic)}</p><h1>${escape(post.title)}</h1><p>${escape(
       post.description
@@ -102,18 +103,14 @@
       )
       .join("")}${sourceNote}</div></article>`;
   };
-  const content = { home, research, publications, about, cv, article }[page] || research;
-  const homeContact =
-    page === "home"
-      ? `<section class="site-contact"><span>$ open communication_channel</span><a href="mailto:${data.identity.email}">Say hello &nearr;</a></section>`
-      : "";
-  const shell = `<div class="site site--${variant}"><aside class="site-rail"><a class="site-mark" href="index.html">IA</a><div class="site-identity"><strong>${escape(
+  const content = { home, projects, publications, about, cv, article }[page] || projects;
+  const shell = `<div class="site site--${variant}" data-sidebar-shell><aside class="site-rail"><div class="sidebar-rail-head"><a class="site-mark" href="${routes.home}">IA</a><div class="site-identity"><strong>${escape(
     data.identity.name
-  )}</strong><span>AI research</span></div><nav class="site-nav" aria-label="Primary navigation">${nav()}</nav></aside><main class="site-main"><div class="site-top" aria-hidden="true"></div>${content()}${homeContact}<footer class="site-footer"><span>&copy; ${new Date().getFullYear()} ${escape(
+  )}</strong><span>AI research</span></div><button class="sidebar-toggle" type="button" data-sidebar-toggle aria-controls="site-primary-navigation" aria-expanded="true" aria-label="Collapse navigation"><span class="sidebar-toggle__desktop" aria-hidden="true">&lsaquo;</span><span class="sidebar-toggle__mobile" data-sidebar-toggle-text aria-hidden="true">Menu</span></button></div><nav class="site-nav" id="site-primary-navigation" data-sidebar-nav aria-label="Primary navigation">${nav()}</nav>${contactBlock("contact-card--sidebar")}</aside><button class="sidebar-backdrop" type="button" data-sidebar-backdrop aria-label="Close navigation" hidden></button><main class="site-main"><div class="site-top" aria-hidden="true"></div>${content()}<footer class="site-footer"><span>&copy; ${new Date().getFullYear()} ${escape(
     data.identity.name
   )}</span><span><a href="mailto:${data.identity.email}">${escape(
     data.identity.email
-  )}</a> / <a href="https://github.com/israel-adewuyi" target="_blank" rel="noreferrer">GitHub</a></span></footer></main></div>`;
+  )}</a> / <a href="https://github.com/israel-adewuyi" target="_blank" rel="noreferrer">GitHub</a> / <a href="https://x.com/Israel_Adewuyi_" target="_blank" rel="noreferrer">X</a></span></footer></main></div>`;
   document.getElementById("app").innerHTML = shell;
   const observer =
     "IntersectionObserver" in window

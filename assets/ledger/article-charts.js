@@ -1,10 +1,150 @@
 (() => {
+  const loadIframeResizer = () => {
+    if (!document.querySelector(".ledger-post-body iframe")) return;
+    if (document.querySelector('script[data-auto-resize-iframes]')) return;
+
+    const script = document.createElement("script");
+    script.src = "/assets/js/auto-resize-iframes.js";
+    script.dataset.autoResizeIframes = "";
+    document.head.append(script);
+  };
+
+  loadIframeResizer();
+
   const ns = "http://www.w3.org/2000/svg";
   const create = (name, attributes = {}) => {
     const element = document.createElementNS(ns, name);
     Object.entries(attributes).forEach(([key, value]) => element.setAttribute(key, value));
     return element;
   };
+
+  const setupArticleToc = () => {
+    const toc = document.querySelector(".ledger-article-toc");
+    if (!toc) return;
+
+    let linksContainer = toc.querySelector(".toc-links");
+    if (!linksContainer) {
+      linksContainer = document.createElement("div");
+      linksContainer.className = "toc-links";
+      linksContainer.id = "article-toc-links";
+      Array.from(toc.children)
+        .filter((child) => child.tagName === "A")
+        .forEach((link) => linksContainer.append(link));
+      toc.append(linksContainer);
+    }
+
+    let toggle = toc.querySelector(".toc-mobile-toggle");
+    if (!toggle) {
+      toggle = document.createElement("button");
+      toggle.className = "toc-mobile-toggle";
+      toggle.type = "button";
+      toggle.setAttribute("aria-expanded", "false");
+      toggle.setAttribute("aria-controls", linksContainer.id);
+      const label = document.createElement("span");
+      label.className = "toc-mobile-label";
+      label.textContent = "Contents";
+      const icon = document.createElement("span");
+      icon.className = "toc-mobile-icon";
+      icon.setAttribute("aria-hidden", "true");
+      icon.textContent = "\u25be";
+      toggle.append(label, icon);
+      toc.insertBefore(toggle, linksContainer);
+    }
+
+    const mobileLabel = toggle.querySelector(".toc-mobile-label");
+    const mobileQuery = window.matchMedia("(max-width: 900px)");
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const links = Array.from(linksContainer.querySelectorAll('a[href^="#"]'));
+
+    links.forEach((link) => {
+      if (!link.classList.contains("toc-subsection")) return;
+      if (link.classList.contains("toc-level-3") || link.classList.contains("toc-level-4")) return;
+      const marker = link.querySelector("span")?.textContent || "";
+      const depth = (marker.match(/\./g) || []).length;
+      link.classList.add(depth >= 2 ? "toc-level-4" : "toc-level-3");
+    });
+
+    const entries = links
+      .map((link) => {
+        const id = decodeURIComponent(link.hash.slice(1));
+        const heading = document.getElementById(id);
+        return heading ? { heading, link } : null;
+      })
+      .filter(Boolean);
+    if (!entries.length) return;
+
+    const linkLabel = (link) => {
+      const copy = link.cloneNode(true);
+      copy.querySelector("span")?.remove();
+      return copy.textContent.trim();
+    };
+    const setOpen = (open) => {
+      toc.classList.toggle("is-open", open);
+      toggle.setAttribute("aria-expanded", String(open));
+    };
+    const keepLinkVisible = (link) => {
+      if (mobileQuery.matches && !toc.classList.contains("is-open")) return;
+      if (linksContainer.scrollHeight <= linksContainer.clientHeight) return;
+      const containerRect = linksContainer.getBoundingClientRect();
+      const linkRect = link.getBoundingClientRect();
+      let nextTop = linksContainer.scrollTop;
+      if (linkRect.top < containerRect.top + 8) nextTop += linkRect.top - containerRect.top - 8;
+      if (linkRect.bottom > containerRect.bottom - 8) nextTop += linkRect.bottom - containerRect.bottom + 8;
+      if (nextTop === linksContainer.scrollTop) return;
+      linksContainer.scrollTo({ top: nextTop, behavior: reducedMotion.matches ? "auto" : "smooth" });
+    };
+
+    let activeLink = null;
+    const setActive = (link) => {
+      if (!link || link === activeLink) return;
+      links.forEach((item) => item.removeAttribute("aria-current"));
+      link.setAttribute("aria-current", "location");
+      activeLink = link;
+      if (mobileLabel) mobileLabel.textContent = `Contents \u00b7 ${linkLabel(link)}`;
+      requestAnimationFrame(() => keepLinkVisible(link));
+    };
+    const updateActive = () => {
+      const threshold = mobileQuery.matches ? 124 : 72;
+      let current = entries[0];
+      for (const entry of entries) {
+        if (entry.heading.getBoundingClientRect().top > threshold) break;
+        current = entry;
+      }
+      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2) current = entries.at(-1);
+      setActive(current.link);
+    };
+
+    let framePending = false;
+    const scheduleUpdate = () => {
+      if (framePending) return;
+      framePending = true;
+      requestAnimationFrame(() => {
+        framePending = false;
+        updateActive();
+      });
+    };
+
+    toggle.addEventListener("click", () => {
+      const open = !toc.classList.contains("is-open");
+      setOpen(open);
+      if (open && activeLink) requestAnimationFrame(() => keepLinkVisible(activeLink));
+    });
+    links.forEach((link) => link.addEventListener("click", () => {
+      if (mobileQuery.matches) setOpen(false);
+    }));
+    const updateMode = () => {
+      setOpen(false);
+      scheduleUpdate();
+    };
+    if (mobileQuery.addEventListener) mobileQuery.addEventListener("change", updateMode);
+    else mobileQuery.addListener(updateMode);
+    window.addEventListener("scroll", scheduleUpdate, { passive: true });
+    window.addEventListener("resize", scheduleUpdate);
+    window.addEventListener("hashchange", scheduleUpdate);
+    updateActive();
+  };
+
+  setupArticleToc();
 
   document.querySelectorAll(".interactive-chart[data-chart-points]").forEach((chart) => {
     const points = JSON.parse(chart.dataset.chartPoints || "[]");

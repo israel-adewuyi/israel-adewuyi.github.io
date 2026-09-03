@@ -24,6 +24,90 @@ textarea,
 select {
   font: inherit;
 }
+.sidebar-rail-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+.sidebar-toggle {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  padding: 0;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.sidebar-toggle:hover {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+.sidebar-toggle:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 3px;
+}
+.sidebar-toggle__desktop {
+  display: inline-block;
+  font: 18px/1 Arial, sans-serif;
+  transition: transform 160ms ease;
+}
+.sidebar-toggle__mobile {
+  display: none;
+  font: 10px/1 Consolas, monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.sidebar-backdrop {
+  display: none;
+  padding: 0;
+  border: 0;
+}
+.contact-card--sidebar {
+  margin-top: auto;
+}
+.contact-card--mobile {
+  display: none;
+}
+.contact-card__command {
+  display: block;
+  color: var(--red);
+  font: 700 10px/1 Consolas, monospace;
+}
+.contact-card p {
+  margin: 10px 0 12px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.contact-card__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+.contact-card__links a {
+  color: var(--blue);
+  font: 700 10px/1.3 Consolas, monospace;
+  text-decoration: none;
+}
+.contact-card__links a:hover,
+.contact-card__links a:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+@media (max-width: 900px) {
+  .contact-card--sidebar {
+    display: none;
+  }
+  .contact-card--mobile {
+    display: block;
+    margin-top: 38px;
+  }
+}
+body.sidebar-open {
+  overflow: hidden;
+}
 .skip-link {
   position: fixed;
   z-index: 1000;

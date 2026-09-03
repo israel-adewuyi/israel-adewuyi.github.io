@@ -10,7 +10,7 @@ email: isistickz@gmail.com
 description: > # the ">" symbol means to ignore newlines until "footer_text:"
   Research notes on reinforcement learning, mechanistic interpretability, and representation learning.
 footer_text: >
-  Research archive by Israel Adewuyi.
+  Projects and publications by Israel Adewuyi.
 keywords: reinforcement learning, mechanistic interpretability, representation learning, AI research
 lang: en # the language of your site (for example: en, fr, cn, ru, etc.)
 icon: # the emoji used as the favicon (alternatively, provide image name in /assets/img/)
@@ -219,7 +219,8 @@ kramdown:
       start_line: 1
 
 # Includes & excludes
-include: []
+include:
+  - assets/_draft
 exclude:
   - bin/
   - CONTRIBUTING.md

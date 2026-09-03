@@ -1,0 +1,86 @@
+.composition-draft {
+  width: min(1120px, 100%);
+}
+
+.composition-stage {
+  margin-top: 4px;
+}
+
+.replica-frame {
+  fill: rgba(250, 250, 247, 0.55);
+  stroke: var(--hairline);
+  stroke-width: 1.2;
+  stroke-dasharray: 5 6;
+}
+
+.stage-card {
+  fill: var(--white);
+  stroke: var(--ink);
+  stroke-width: 1.35;
+}
+
+.stage-card-head {
+  stroke: var(--ink);
+  stroke-width: 1.35;
+}
+
+.replica-zero .stage-card-head {
+  fill: var(--blue-soft);
+}
+
+.replica-one .stage-card-head {
+  fill: var(--green-soft);
+}
+
+.stage-layer {
+  fill: var(--paper);
+  stroke: var(--hairline);
+  stroke-width: 1;
+}
+
+.replica-label {
+  fill: var(--ink);
+  font-size: 12px;
+}
+
+.column-label {
+  fill: var(--ink);
+  font-size: 11px;
+}
+
+.allreduce-box {
+  fill: var(--comm-soft);
+  stroke: var(--comm);
+  stroke-width: 1.4;
+}
+
+.allreduce-title {
+  fill: var(--comm);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
+.allreduce-detail {
+  fill: var(--ink);
+  font-size: 11px;
+}
+
+.activation-label,
+.gradient-label {
+  font-size: 9px;
+  letter-spacing: 0.03em;
+}
+
+.activation-label {
+  fill: var(--muted);
+}
+
+.gradient-label {
+  fill: var(--comm);
+}
+
+@media (max-width: 560px) {
+  .composition-draft {
+    padding: 12px;
+  }
+}

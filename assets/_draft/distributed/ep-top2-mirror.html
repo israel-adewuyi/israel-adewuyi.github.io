@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Expert parallelism - forward</title>
+    <link rel="stylesheet" href="./parallel-mirror.css" />
+    <link rel="stylesheet" href="./ep-top2-mirror.css" />
+  </head>
+  <body>
+    <main class="parallel-draft ep-draft" data-phase="forward">
+      <header class="dp-head">
+        <span class="dp-kicker">Expert parallelism</span>
+        <span class="dp-chip">top-2 / 2 EP ranks / 4 experts per rank</span>
+      </header>
+
+      <section class="stage ep-stage" aria-label="Vertical top-2 expert-parallel routing diagram">
+        <svg viewBox="0 0 900 800" role="img" aria-labelledby="ep-title ep-desc">
+          <title id="ep-title">Vertical top-2 expert routing across two ranks</title>
+          <desc id="ep-desc">
+            Blue token x0 and green token x1 enter replicated routers from the top.
+            Each token is sent to one local and one remote expert while retaining its color.
+            Expert outputs return to the token's source rank and are combined at the bottom.
+          </desc>
+          <defs>
+            <marker id="ep-blue-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#4d91c7" />
+            </marker>
+            <marker id="ep-green-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#5c9c74" />
+            </marker>
+            <marker id="ep-comm-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#e06d3f" />
+            </marker>
+          </defs>
+
+          <text x="250" y="19" text-anchor="middle" class="ep-column-label mono">source rank 0</text>
+          <text x="650" y="19" text-anchor="middle" class="ep-column-label mono">source rank 1</text>
+
+          <rect x="205" y="31" width="90" height="55" class="ep-source" />
+          <rect x="605" y="31" width="90" height="55" class="ep-source" />
+          <text x="250" y="53" text-anchor="middle" class="small-label mono forward-only">local token</text>
+          <text x="650" y="53" text-anchor="middle" class="small-label mono forward-only">local token</text>
+          <text x="250" y="74" text-anchor="middle" class="ep-token-label mono forward-only">x0</text>
+          <text x="650" y="74" text-anchor="middle" class="ep-token-label mono forward-only">x1</text>
+          <text x="250" y="53" text-anchor="middle" class="small-label mono backward-only">input grad</text>
+          <text x="650" y="53" text-anchor="middle" class="small-label mono backward-only">input grad</text>
+          <text x="250" y="74" text-anchor="middle" class="ep-token-label mono backward-only">dx0</text>
+          <text x="650" y="74" text-anchor="middle" class="ep-token-label mono backward-only">dx1</text>
+
+          <rect x="150" y="113" width="200" height="100" class="ep-router" />
+          <rect x="550" y="113" width="200" height="100" class="ep-router" />
+          <rect x="150" y="113" width="200" height="35" class="ep-router-head-zero" />
+          <rect x="550" y="113" width="200" height="35" class="ep-router-head-one" />
+          <text x="250" y="136" text-anchor="middle" class="label mono">replicated router</text>
+          <text x="650" y="136" text-anchor="middle" class="label mono">replicated router</text>
+          <text x="250" y="169" text-anchor="middle" class="tiny-label mono">scores global experts E0-E7</text>
+          <text x="650" y="169" text-anchor="middle" class="tiny-label mono">scores global experts E0-E7</text>
+          <text x="250" y="195" text-anchor="middle" class="ep-token-label mono">top-2: E1, E6</text>
+          <text x="650" y="195" text-anchor="middle" class="ep-token-label mono">top-2: E2, E5</text>
+
+          <line x1="55" y1="251" x2="845" y2="251" class="ep-route-band" />
+          <rect x="338" y="232" width="224" height="38" class="comm-fill" />
+          <text x="450" y="248" text-anchor="middle" class="ep-a2a-label mono forward-only">DISPATCH ALL-TO-ALL</text>
+          <text x="450" y="262" text-anchor="middle" class="tiny-label mono forward-only">solid = local / dashed = crosses rank</text>
+          <text x="450" y="248" text-anchor="middle" class="ep-a2a-label mono backward-only">INVERSE DISPATCH ALL-TO-ALL</text>
+          <text x="450" y="262" text-anchor="middle" class="tiny-label mono backward-only">return input-gradient contributions</text>
+
+          <rect x="55" y="290" width="365" height="190" class="ep-rank-frame" />
+          <rect x="480" y="290" width="365" height="190" class="ep-rank-frame" />
+          <text x="72" y="313" class="ep-rank-label mono">EP rank 0 / owns E0-E3</text>
+          <text x="497" y="313" class="ep-rank-label mono">EP rank 1 / owns E4-E7</text>
+
+          <rect x="90" y="340" width="65" height="82" class="ep-expert" />
+          <rect x="170" y="340" width="65" height="82" class="ep-expert-selected" />
+          <rect x="250" y="340" width="65" height="82" class="ep-expert-selected" />
+          <rect x="330" y="340" width="65" height="82" class="ep-expert" />
+          <text x="122" y="372" text-anchor="middle" class="label mono">E0</text>
+          <text x="202" y="372" text-anchor="middle" class="label mono">E1</text>
+          <text x="282" y="372" text-anchor="middle" class="label mono">E2</text>
+          <text x="362" y="372" text-anchor="middle" class="label mono">E3</text>
+          <text x="202" y="404" text-anchor="middle" class="ep-assignment-zero mono">x0</text>
+          <text x="282" y="404" text-anchor="middle" class="ep-assignment-one mono">x1</text>
+
+          <rect x="505" y="340" width="65" height="82" class="ep-expert" />
+          <rect x="585" y="340" width="65" height="82" class="ep-expert-selected" />
+          <rect x="665" y="340" width="65" height="82" class="ep-expert-selected" />
+          <rect x="745" y="340" width="65" height="82" class="ep-expert" />
+          <text x="537" y="372" text-anchor="middle" class="label mono">E4</text>
+          <text x="617" y="372" text-anchor="middle" class="label mono">E5</text>
+          <text x="697" y="372" text-anchor="middle" class="label mono">E6</text>
+          <text x="777" y="372" text-anchor="middle" class="label mono">E7</text>
+          <text x="617" y="404" text-anchor="middle" class="ep-assignment-one mono">x1</text>
+          <text x="697" y="404" text-anchor="middle" class="ep-assignment-zero mono">x0</text>
+
+          <text x="237" y="456" text-anchor="middle" class="tiny-label mono backward-only">expert gradients stay on rank 0</text>
+          <text x="662" y="456" text-anchor="middle" class="tiny-label mono backward-only">expert gradients stay on rank 1</text>
+
+          <line x1="55" y1="530" x2="845" y2="530" class="ep-route-band" />
+          <rect x="338" y="511" width="224" height="38" class="comm-fill" />
+          <text x="450" y="527" text-anchor="middle" class="ep-a2a-label mono forward-only">RETURN ALL-TO-ALL</text>
+          <text x="450" y="541" text-anchor="middle" class="tiny-label mono forward-only">expert outputs return to token owners</text>
+          <text x="450" y="527" text-anchor="middle" class="ep-a2a-label mono backward-only">INVERSE RETURN ALL-TO-ALL</text>
+          <text x="450" y="541" text-anchor="middle" class="tiny-label mono backward-only">route output gradients to expert owners</text>
+
+          <rect x="175" y="628" width="150" height="76" class="ep-combine" />
+          <rect x="575" y="628" width="150" height="76" class="ep-combine" />
+          <text x="250" y="653" text-anchor="middle" class="small-label mono">weighted combine</text>
+          <text x="650" y="653" text-anchor="middle" class="small-label mono">weighted combine</text>
+          <text x="250" y="682" text-anchor="middle" class="ep-token-label mono forward-only">y0</text>
+          <text x="650" y="682" text-anchor="middle" class="ep-token-label mono forward-only">y1</text>
+          <text x="250" y="682" text-anchor="middle" class="ep-token-label mono backward-only">dy0</text>
+          <text x="650" y="682" text-anchor="middle" class="ep-token-label mono backward-only">dy1</text>
+
+          <g class="forward-only" aria-label="Forward routing">
+            <path d="M 250 86 V 113" class="ep-token-zero-path" marker-end="url(#ep-blue-arrow)" />
+            <path d="M 650 86 V 113" class="ep-token-one-path" marker-end="url(#ep-green-arrow)" />
+
+            <circle r="5.5" class="ep-dot-zero">
+              <animateMotion dur="0.8s" repeatCount="indefinite" path="M 250 86 V 113" />
+            </circle>
+            <circle r="5.5" class="ep-dot-one">
+              <animateMotion dur="0.8s" begin="0.3s" repeatCount="indefinite" path="M 650 86 V 113" />
+            </circle>
+
+            <path d="M 250 213 C 250 260, 202 286, 202 340" class="ep-token-zero-path" marker-end="url(#ep-blue-arrow)" />
+            <path d="M 250 213 C 250 260, 697 276, 697 340" class="ep-token-zero-path ep-remote-path" marker-end="url(#ep-blue-arrow)" />
+            <path d="M 650 213 C 650 260, 282 276, 282 340" class="ep-token-one-path ep-remote-path" marker-end="url(#ep-green-arrow)" />
+            <path d="M 650 213 C 650 260, 617 286, 617 340" class="ep-token-one-path" marker-end="url(#ep-green-arrow)" />
+
+            <path d="M 202 422 C 202 500, 225 555, 225 628" class="ep-token-zero-path" marker-end="url(#ep-blue-arrow)" />
+            <path d="M 697 422 C 697 500, 520 555, 275 628" class="ep-token-zero-path ep-remote-path" marker-end="url(#ep-blue-arrow)" />
+            <path d="M 282 422 C 282 500, 460 555, 625 628" class="ep-token-one-path ep-remote-path" marker-end="url(#ep-green-arrow)" />
+            <path d="M 617 422 C 617 500, 675 555, 675 628" class="ep-token-one-path" marker-end="url(#ep-green-arrow)" />
+
+            <circle r="5.5" class="ep-dot-zero">
+              <animateMotion dur="2s" repeatCount="indefinite" path="M 250 213 C 250 260, 202 286, 202 340" />
+            </circle>
+            <circle r="5.5" class="ep-dot-zero">
+              <animateMotion dur="2s" begin="0.25s" repeatCount="indefinite" path="M 250 213 C 250 260, 697 276, 697 340" />
+            </circle>
+            <circle r="5.5" class="ep-dot-one">
+              <animateMotion dur="2s" begin="0.45s" repeatCount="indefinite" path="M 650 213 C 650 260, 282 276, 282 340" />
+            </circle>
+            <circle r="5.5" class="ep-dot-one">
+              <animateMotion dur="2s" begin="0.7s" repeatCount="indefinite" path="M 650 213 C 650 260, 617 286, 617 340" />
+            </circle>
+            <circle r="5.5" class="ep-dot-zero">
+              <animateMotion dur="2.2s" begin="0.6s" repeatCount="indefinite" path="M 202 422 C 202 500, 225 555, 225 628" />
+            </circle>
+            <circle r="5.5" class="ep-dot-zero">
+              <animateMotion dur="2.2s" begin="0.8s" repeatCount="indefinite" path="M 697 422 C 697 500, 520 555, 275 628" />
+            </circle>
+            <circle r="5.5" class="ep-dot-one">
+              <animateMotion dur="2.2s" begin="1.05s" repeatCount="indefinite" path="M 282 422 C 282 500, 460 555, 625 628" />
+            </circle>
+            <circle r="5.5" class="ep-dot-one">
+              <animateMotion dur="2.2s" begin="0.95s" repeatCount="indefinite" path="M 617 422 C 617 500, 675 555, 675 628" />
+            </circle>
+
+            <text x="450" y="764" text-anchor="middle" class="small-label mono">arrow color follows the token through local and remote experts</text>
+          </g>
+
+          <g class="backward-only" aria-label="Backward routing">
+            <path d="M 225 628 C 225 555, 202 500, 202 422" class="ep-token-zero-path" marker-end="url(#ep-blue-arrow)" />
+            <path d="M 275 628 C 520 555, 697 500, 697 422" class="ep-token-zero-path ep-remote-path" marker-end="url(#ep-blue-arrow)" />
+            <path d="M 625 628 C 460 555, 282 500, 282 422" class="ep-token-one-path ep-remote-path" marker-end="url(#ep-green-arrow)" />
+            <path d="M 675 628 C 675 555, 617 500, 617 422" class="ep-token-one-path" marker-end="url(#ep-green-arrow)" />
+
+            <path d="M 202 340 C 202 286, 250 260, 250 213" class="ep-token-zero-path" marker-end="url(#ep-blue-arrow)" />
+            <path d="M 697 340 C 697 276, 250 260, 250 213" class="ep-token-zero-path ep-remote-path" marker-end="url(#ep-blue-arrow)" />
+            <path d="M 282 340 C 282 276, 650 260, 650 213" class="ep-token-one-path ep-remote-path" marker-end="url(#ep-green-arrow)" />
+            <path d="M 617 340 C 617 286, 650 260, 650 213" class="ep-token-one-path" marker-end="url(#ep-green-arrow)" />
+
+            <path d="M 250 113 V 86" class="ep-token-zero-path" marker-end="url(#ep-blue-arrow)" />
+            <path d="M 650 113 V 86" class="ep-token-one-path" marker-end="url(#ep-green-arrow)" />
+
+            <path d="M 350 163 H 550" class="ep-allreduce-line" marker-start="url(#ep-comm-arrow)" marker-end="url(#ep-comm-arrow)" />
+            <rect x="374" y="143" width="152" height="40" class="ep-allreduce-box" />
+            <text x="450" y="159" text-anchor="middle" class="ep-a2a-label mono">ALL-REDUCE</text>
+            <text x="450" y="175" text-anchor="middle" class="tiny-label mono">router + shared grads</text>
+
+            <circle r="5.5" class="ep-dot-zero">
+              <animateMotion dur="2.2s" begin="0.15s" repeatCount="indefinite" path="M 225 628 C 225 555, 202 500, 202 422" />
+            </circle>
+            <circle r="5.5" class="ep-dot-zero">
+              <animateMotion dur="2.2s" repeatCount="indefinite" path="M 275 628 C 520 555, 697 500, 697 422" />
+            </circle>
+            <circle r="5.5" class="ep-dot-one">
+              <animateMotion dur="2.2s" begin="0.3s" repeatCount="indefinite" path="M 625 628 C 460 555, 282 500, 282 422" />
+            </circle>
+            <circle r="5.5" class="ep-dot-one">
+              <animateMotion dur="2.2s" begin="0.45s" repeatCount="indefinite" path="M 675 628 C 675 555, 617 500, 617 422" />
+            </circle>
+            <circle r="5.5" class="ep-dot-zero">
+              <animateMotion dur="2s" begin="0.5s" repeatCount="indefinite" path="M 202 340 C 202 286, 250 260, 250 213" />
+            </circle>
+            <circle r="5.5" class="ep-dot-zero">
+              <animateMotion dur="2s" begin="0.65s" repeatCount="indefinite" path="M 697 340 C 697 276, 250 260, 250 213" />
+            </circle>
+            <circle r="5.5" class="ep-dot-one">
+              <animateMotion dur="2s" begin="0.95s" repeatCount="indefinite" path="M 282 340 C 282 276, 650 260, 650 213" />
+            </circle>
+            <circle r="5.5" class="ep-dot-one">
+              <animateMotion dur="2s" begin="1.1s" repeatCount="indefinite" path="M 617 340 C 617 286, 650 260, 650 213" />
+            </circle>
+            <circle r="5.5" class="ep-dot-zero">
+              <animateMotion dur="0.8s" begin="1.2s" repeatCount="indefinite" path="M 250 113 V 86" />
+            </circle>
+            <circle r="5.5" class="ep-dot-one">
+              <animateMotion dur="0.8s" begin="1.5s" repeatCount="indefinite" path="M 650 113 V 86" />
+            </circle>
+
+            <text x="450" y="764" text-anchor="middle" class="small-label mono">backward reverses both exchanges; sharded expert gradients stay with their owners</text>
+          </g>
+        </svg>
+      </section>
+
+      <nav class="phase-tabs" aria-label="Pass phase">
+        <button type="button" data-phase-target="forward" aria-pressed="true">forward</button>
+        <button type="button" data-phase-target="backward" aria-pressed="false">backward</button>
+      </nav>
+    </main>
+
+    <script>
+      (() => {
+        const root = document.querySelector(".parallel-draft");
+        const buttons = Array.from(root.querySelectorAll("[data-phase-target]"));
+
+        function setPhase(phase) {
+          if (phase !== "forward" && phase !== "backward") return;
+          root.dataset.phase = phase;
+          buttons.forEach((button) => {
+            button.setAttribute("aria-pressed", String(button.dataset.phaseTarget === phase));
+          });
+          document.title = `Expert parallelism - ${phase}`;
+        }
+
+        buttons.forEach((button) => {
+          button.addEventListener("click", () => setPhase(button.dataset.phaseTarget));
+        });
+
+        const requestedPhase = new URLSearchParams(window.location.search).get("phase");
+        setPhase(requestedPhase === "backward" ? "backward" : "forward");
+        window.setPhase = setPhase;
+      })();
+    </script>
+  </body>
+</html>
