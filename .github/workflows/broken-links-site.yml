@@ -19,6 +19,14 @@ jobs:
         with:
           ruby-version: "3.2.2"
           bundler-cache: true
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install ImageMagick
+        run: sudo apt-get update && sudo apt-get install --yes imagemagick
+      - name: Generate Ledger articles
+        run: node scripts/build-ledger-site.mjs
       - name: Update _config.yml ⚙️
         uses: fjogeleit/yaml-update-action@main
         with:

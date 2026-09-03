@@ -59,7 +59,8 @@
     links.forEach((link) => {
       if (!link.classList.contains("toc-subsection")) return;
       if (link.classList.contains("toc-level-3") || link.classList.contains("toc-level-4")) return;
-      const marker = link.querySelector("span")?.textContent || "";
+      const markerNode = link.querySelector("span");
+      const marker = markerNode ? markerNode.textContent : "";
       const depth = (marker.match(/\./g) || []).length;
       link.classList.add(depth >= 2 ? "toc-level-4" : "toc-level-3");
     });
@@ -75,7 +76,8 @@
 
     const linkLabel = (link) => {
       const copy = link.cloneNode(true);
-      copy.querySelector("span")?.remove();
+      const marker = copy.querySelector("span");
+      if (marker) marker.remove();
       return copy.textContent.trim();
     };
     const setOpen = (open) => {
@@ -110,7 +112,7 @@
         if (entry.heading.getBoundingClientRect().top > threshold) break;
         current = entry;
       }
-      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2) current = entries.at(-1);
+      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2) current = entries[entries.length - 1];
       setActive(current.link);
     };
 
@@ -162,7 +164,7 @@
 
     const show = (index) => {
       const point = points[index];
-      const x = left + ((point.step - points[0].step) / (points.at(-1).step - points[0].step || 1)) * (right - left);
+      const x = left + ((point.step - points[0].step) / (points[points.length - 1].step - points[0].step || 1)) * (right - left);
       const y = top + ((0.2 - point.r) / 1.2) * (bottom - top);
       const labelX = x > right - 160 ? x - 150 : x + 12;
       const labelY = Math.max(top + 6, Math.min(bottom - 48, y - 48));
@@ -186,8 +188,17 @@
       const relativeX = ((event.clientX - rectangle.left) / rectangle.width) * chart.viewBox.baseVal.width;
       return points.reduce(
         (closest, point, index) =>
-          Math.abs(left + ((point.step - points[0].step) / (points.at(-1).step - points[0].step || 1)) * (right - left) - relativeX) <
-          Math.abs(left + ((points[closest].step - points[0].step) / (points.at(-1).step - points[0].step || 1)) * (right - left) - relativeX)
+          Math.abs(
+            left +
+              ((point.step - points[0].step) / (points[points.length - 1].step - points[0].step || 1)) * (right - left) -
+              relativeX
+          ) <
+          Math.abs(
+            left +
+              ((points[closest].step - points[0].step) / (points[points.length - 1].step - points[0].step || 1)) *
+                (right - left) -
+              relativeX
+          )
             ? index
             : closest,
         0

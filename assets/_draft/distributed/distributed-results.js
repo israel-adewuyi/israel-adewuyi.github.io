@@ -2,7 +2,7 @@
   "use strict";
 
   const data = window.distributedResults;
-  if (!data?.records?.length) return;
+  if (!data || !data.records || !data.records.length) return;
 
   const NS = "http://www.w3.org/2000/svg";
   const metricMeta = {
@@ -164,14 +164,16 @@
   };
 
   const metricHasData = (record, metric) =>
-    Number.isFinite(record.metrics[metric]?.mean) &&
+    record.metrics[metric] &&
+    Number.isFinite(record.metrics[metric].mean) &&
     (metric !== "middle_stage_memory" || record.metrics[metric].mean > 0);
 
   const configureMetricOptions = (select, records) => {
     Array.from(select.options).forEach((option) => {
       option.disabled = !records.some((record) => metricHasData(record, option.value));
     });
-    if (!select.value || select.selectedOptions[0]?.disabled) {
+    const selectedOption = select.selectedOptions[0];
+    if (!select.value || (selectedOption && selectedOption.disabled)) {
       const fallback = Array.from(select.options).find((option) => !option.disabled);
       if (fallback) select.value = fallback.value;
     }
@@ -491,7 +493,7 @@
         class: `lr-${index + 1}`,
         tabindex: "0",
         role: "graphics-symbol",
-        "aria-label": `Learning rate ${item.learningRate}; final smoothed loss ${item.smoothed.at(-1).loss.toFixed(2)}`,
+        "aria-label": `Learning rate ${item.learningRate}; final smoothed loss ${item.smoothed[item.smoothed.length - 1].loss.toFixed(2)}`,
       });
       group.append(el("path", { class: "lr-path", d: path }));
       marks.append(group);

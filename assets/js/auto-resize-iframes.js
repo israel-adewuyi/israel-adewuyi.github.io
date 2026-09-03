@@ -42,14 +42,14 @@
 
     const connect = () => {
       const previous = observers.get(iframe);
-      previous?.resizeObserver.disconnect();
+      if (previous && previous.resizeObserver) previous.resizeObserver.disconnect();
 
       try {
         const frameUrl = new URL(iframe.src, window.location.href);
         if (frameUrl.origin !== window.location.origin) return;
 
         const doc = iframe.contentDocument;
-        if (!doc?.body || !doc.defaultView || doc.URL === "about:blank") return;
+        if (!doc || !doc.body || !doc.defaultView || doc.URL === "about:blank") return;
 
         const resize = () => {
           cancelAnimationFrame(resizeFrame);
@@ -75,14 +75,14 @@
         observers.set(iframe, { resizeObserver });
 
         observeContent();
-        doc.fonts?.ready.then(resize).catch(() => {});
-      } catch {
+        if (doc.fonts && doc.fonts.ready) doc.fonts.ready.then(resize).catch(() => {});
+      } catch (error) {
         // Cross-origin and unavailable iframe documents retain their CSS fallback height.
       }
     };
 
     iframe.addEventListener("load", connect);
-    if (iframe.contentDocument?.readyState === "complete") connect();
+    if (iframe.contentDocument && iframe.contentDocument.readyState === "complete") connect();
   };
 
   const start = () => document.querySelectorAll(iframeSelector).forEach(attach);

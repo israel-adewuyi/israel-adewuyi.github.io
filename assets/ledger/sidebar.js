@@ -5,7 +5,7 @@
   const readCollapsed = () => {
     try {
       return window.localStorage.getItem(storageKey) === "true";
-    } catch {
+    } catch (error) {
       return false;
     }
   };
@@ -13,14 +13,14 @@
   const writeCollapsed = (value) => {
     try {
       window.localStorage.setItem(storageKey, String(value));
-    } catch {
+    } catch (error) {
       // The sidebar still works when storage is unavailable.
     }
   };
 
   document.querySelectorAll("[data-sidebar-shell]").forEach((shell) => {
     const button = shell.querySelector("[data-sidebar-toggle]");
-    const buttonText = button?.querySelector("[data-sidebar-toggle-text]");
+    const buttonText = button ? button.querySelector("[data-sidebar-toggle-text]") : null;
     const backdrop = shell.querySelector("[data-sidebar-backdrop]");
     const navigation = shell.querySelector("[data-sidebar-nav]");
     if (!button || !backdrop || !navigation) return;
