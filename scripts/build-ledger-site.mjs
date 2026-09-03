@@ -43,12 +43,19 @@ const existingPostDetails = {
 
 const pageRoutes = {
   home: "/",
-  research: "/research/",
-  writing: "/writing/",
+  projects: "/projects/",
+  research: "/projects/",
+  writing: "/projects/",
   publications: "/publications/",
   about: "/about/",
   cv: "/cv/",
 };
+const primaryNavigation = [
+  { key: "home", label: "Home", href: pageRoutes.home },
+  { key: "projects", label: "Projects", href: pageRoutes.projects },
+  { key: "publications", label: "Publications", href: pageRoutes.publications },
+  { key: "cv", label: "CV", href: pageRoutes.cv },
+];
 const correlationData = JSON.parse(await readFile(resolve(root, "assets", "json", "rlvr_landscape", "correlations.json"), "utf8"));
 
 const escapeHtml = (value) =>
@@ -115,9 +122,29 @@ function renderMarkdown(source, cite, footnote) {
       paragraph = [];
     }
   };
+  const renderList = (items, startIndex = 0, indent = items[startIndex]?.indent ?? 0) => {
+    let html = "<ul>";
+    let index = startIndex;
+
+    while (index < items.length && items[index].indent === indent) {
+      const item = items[index];
+      index += 1;
+      html += `<li>${renderInline(item.content, cite, footnote)}`;
+
+      if (index < items.length && items[index].indent > indent) {
+        const nested = renderList(items, index, items[index].indent);
+        html += nested.html;
+        index = nested.index;
+      }
+
+      html += "</li>";
+    }
+
+    return { html: `${html}</ul>`, index };
+  };
   const flushList = () => {
     if (list.length) {
-      output.push(`<ul>${list.map((item) => `<li>${renderInline(item, cite, footnote)}</li>`).join("")}</ul>`);
+      output.push(renderList(list).html);
       list = [];
     }
   };
@@ -218,11 +245,14 @@ function renderMarkdown(source, cite, footnote) {
       output.push(`<h${level}>${renderInline(heading[2], cite, footnote)}</h${level}>`);
       continue;
     }
-    const bullet = line.match(/^\s*[-*]\s+(.+)$/);
+    const bullet = line.match(/^(\s*)[-*]\s+(.+)$/);
     if (bullet) {
       flushParagraph();
       flushTable();
-      list.push(bullet[1]);
+      list.push({
+        indent: bullet[1].replace(/\t/g, "    ").length,
+        content: bullet[2],
+      });
       continue;
     }
     const rawTag = line
@@ -369,18 +399,17 @@ function articleContents(body) {
         counts[4] += 1;
       }
       const primary = String(Math.max(counts[2], 1)).padStart(2, "0");
-      const number =
-        entry.level === 2
-          ? primary
-          : entry.level === 3
-            ? `${primary}.${String(counts[3]).padStart(2, "0")}`
-            : `${primary}.${String(Math.max(counts[3], 1)).padStart(2, "0")}.${String(counts[4]).padStart(2, "0")}`;
-      return `<a class="${entry.level > 2 ? "toc-subsection" : ""}" href="#${escapeAttribute(entry.id)}"><span>${number}</span> ${escapeHtml(
+      const marker = entry.level === 2 ? primary : entry.level === 3 ? "&bull;" : "&#9702;";
+      const className = entry.level > 2 ? `toc-subsection toc-level-${entry.level}` : "";
+      return `<a class="${className}" href="#${escapeAttribute(entry.id)}"><span>${marker}</span> ${escapeHtml(
         entry.text
       )}</a>`;
     })
     .join("");
-  return { body: withIds, toc: `<aside class="ledger-article-toc" aria-label="Contents"><span>Contents</span>${links}</aside>` };
+  return {
+    body: withIds,
+    toc: `<aside class="ledger-article-toc" aria-label="Contents"><span>Contents</span><button class="toc-mobile-toggle" type="button" aria-expanded="false" aria-controls="article-toc-links"><span class="toc-mobile-label">Contents</span><span class="toc-mobile-icon" aria-hidden="true">&#9662;</span></button><div class="toc-links" id="article-toc-links">${links}</div></aside>`,
+  };
 }
 
 function staticCorrelationChart(seriesId, title) {
@@ -435,7 +464,22 @@ function formatDate(value) {
 function staticPage(page, title) {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>${escapeHtml(
     title
-  )} - Israel Adewuyi</title><link rel="stylesheet" href="/assets/ledger/site-common.css?v=${assetVersion}" /><link rel="stylesheet" href="/assets/ledger/style.css?v=${assetVersion}" /></head><body data-variant="ledger" data-page="${page}" data-asset-root="/assets/img/"><a class="skip-link" href="#app">Skip to content</a><div id="app"></div><script src="/assets/ledger/routes.js?v=${assetVersion}"></script><script src="/assets/ledger/posts.js?v=${assetVersion}"></script><script src="/assets/ledger/content.js?v=${assetVersion}"></script><script src="/assets/ledger/site-runtime.js?v=${assetVersion}"></script></body></html>`;
+  )} - Israel Adewuyi</title><link rel="stylesheet" href="/assets/ledger/site-common.css?v=${assetVersion}" /><link rel="stylesheet" href="/assets/ledger/style.css?v=${assetVersion}" /></head><body data-variant="ledger" data-page="${page}" data-asset-root="/assets/img/"><a class="skip-link" href="#app">Skip to content</a><div id="app"></div><script src="/assets/ledger/routes.js?v=${assetVersion}"></script><script src="/assets/ledger/posts.js?v=${assetVersion}"></script><script src="/assets/ledger/content.js?v=${assetVersion}"></script><script src="/assets/ledger/site-runtime.js?v=${assetVersion}"></script><script src="/assets/ledger/sidebar.js?v=${assetVersion}"></script></body></html>`;
+}
+
+function renderPrimaryNavigation(activePage) {
+  return primaryNavigation
+    .map(
+      (item, index) =>
+        `<a class="nav-link${item.key === activePage ? " is-active" : ""}" href="${item.href}"${
+          item.key === activePage ? ' aria-current="page"' : ""
+        }><span>${String(index + 1).padStart(2, "0")}</span>${item.label}</a>`
+    )
+    .join("");
+}
+
+function renderContactBlock() {
+  return `<div class="contact-card contact-card--sidebar" aria-label="Contact"><span class="contact-card__command">$ contact</span><p>Want to chat?</p><div class="contact-card__links"><a href="mailto:isistickz@gmail.com">Email &nearr;</a><a href="https://github.com/israel-adewuyi" target="_blank" rel="noreferrer">GitHub &nearr;</a><a href="https://x.com/Israel_Adewuyi_" target="_blank" rel="noreferrer">X &nearr;</a></div></div>`;
 }
 
 function articlePage(post, body, toc, references, footnotes) {
@@ -443,15 +487,13 @@ function articlePage(post, body, toc, references, footnotes) {
     post.description
   )}" /><title>${escapeHtml(
     post.title
-  )} - Israel Adewuyi</title><link rel="stylesheet" href="/assets/ledger/site-common.css" /><link rel="stylesheet" href="/assets/ledger/style.css" /><link rel="stylesheet" href="/assets/ledger/post.css" /><script>window.MathJax={tex:{inlineMath:[['$','$'],['\\\\(','\\\\)']],displayMath:[['$$','$$'],['\\\\[','\\\\]']]}};</script><script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script><script defer src="/assets/ledger/article-charts.js"></script></head><body><a class="skip-link" href="#article">Skip to article</a><div class="ledger-post-shell"><aside class="ledger-post-rail"><a class="ledger-post-name" href="/">Israel Adewuyi</a><span>Research ledger / 2024-present</span><nav aria-label="Primary navigation"><a href="/"><span>01</span>Home</a><a href="/research/"><span>02</span>Research</a><a href="/publications/"><span>03</span>Publications</a><a href="/about/"><span>04</span>About</a><a href="/cv/"><span>05</span>Profile</a></nav><p>Research record<br />${escapeHtml(
-    post.date.replaceAll("-", ".")
-  )}</p></aside><main class="ledger-post-main" id="article"><div class="ledger-post-top"><span>Research archive / ${escapeHtml(
+  )} - Israel Adewuyi</title><link rel="stylesheet" href="/assets/ledger/site-common.css?v=${assetVersion}" /><link rel="stylesheet" href="/assets/ledger/style.css?v=${assetVersion}" /><link rel="stylesheet" href="/assets/ledger/post.css?v=${assetVersion}" /><script>window.MathJax={tex:{inlineMath:[['$','$'],['\\\\(','\\\\)']],displayMath:[['$$','$$'],['\\\\[','\\\\]']]}};</script><script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script><script defer src="/assets/ledger/article-charts.js?v=${assetVersion}"></script><script defer src="/assets/ledger/sidebar.js?v=${assetVersion}"></script></head><body><a class="skip-link" href="#article">Skip to article</a><div class="ledger-post-shell" data-sidebar-shell><aside class="ledger-post-rail"><div class="sidebar-rail-head"><a class="ledger-post-name" href="/"><span class="sidebar-brand-full">Israel Adewuyi</span><span class="sidebar-brand-short" aria-hidden="true">IA</span></a><button class="sidebar-toggle" type="button" data-sidebar-toggle aria-controls="article-primary-navigation" aria-expanded="true" aria-label="Collapse navigation"><span class="sidebar-toggle__desktop" aria-hidden="true">&lsaquo;</span><span class="sidebar-toggle__mobile" data-sidebar-toggle-text aria-hidden="true">Menu</span></button></div><span>AI research</span><nav id="article-primary-navigation" data-sidebar-nav aria-label="Primary navigation">${renderPrimaryNavigation("projects")}</nav>${renderContactBlock()}</aside><button class="sidebar-backdrop" type="button" data-sidebar-backdrop aria-label="Close navigation" hidden></button><main class="ledger-post-main" id="article"><div class="ledger-post-top"><span>Projects / ${escapeHtml(
     post.topic
-  )}</span><a href="/research/">Back to research</a></div><article class="ledger-post"><header><p class="ledger-post-prompt">$ open ./research/${escapeHtml(
+  )}</span><a href="/projects/">Back to projects</a></div><article class="ledger-post"><header><p class="ledger-post-prompt">$ open ./projects/${escapeHtml(
     post.slug
   )}</p><p class="ledger-post-meta">${formatDate(post.date)} / ${escapeHtml(post.description)}</p><h1>${escapeHtml(
     post.title
-  )}</h1></header><div class="ledger-article-layout">${toc}<div class="ledger-post-body">${body}${footnotes}${references}</div></div><footer><span>Research record / ${escapeHtml(
+  )}</h1></header><div class="ledger-article-layout">${toc}<div class="ledger-post-body">${body}${footnotes}${references}</div></div><footer><span>Project / ${escapeHtml(
     post.date.slice(0, 4)
   )}</span><a href="mailto:isistickz@gmail.com">Discuss this note &nearr;</a></footer></article></main></div></body></html>`;
 }
@@ -471,7 +513,7 @@ for (const entry of entries) {
   posts.push({
     slug,
     date: fields.date || nameMatch[1],
-    topic: fields.topic || details.topic || "Research note",
+    topic: fields.topic || details.topic || "Project note",
     title: fields.title || slug.replace(/[-_]/g, " "),
     description: fields.description || "",
     image: fields.image || details.image || "",
@@ -494,7 +536,11 @@ await writeFile(
 );
 await writeFile(
   resolve(ledgerDirectory, "routes.js"),
-  `window.siteRoutes = ${JSON.stringify(pageRoutes, null, 2)};\nwindow.siteArticleRoutes = ${JSON.stringify(
+  `window.siteRoutes = ${JSON.stringify(pageRoutes, null, 2)};\nwindow.siteNavigation = ${JSON.stringify(
+    primaryNavigation,
+    null,
+    2
+  )};\nwindow.siteArticleRoutes = ${JSON.stringify(
     Object.fromEntries(posts.map((post) => [post.slug, `/blog/${post.date.slice(0, 4)}/${post.slug}/`])),
     null,
     2
@@ -503,12 +549,13 @@ await writeFile(
 
 for (const [path, page, title] of [
   ["index.html", "home", "Israel Adewuyi"],
-  ["research/index.html", "research", "Research"],
-  ["writing/index.html", "research", "Research"],
+  ["projects/index.html", "projects", "Projects"],
+  ["research/index.html", "projects", "Projects"],
+  ["writing/index.html", "projects", "Projects"],
   ["publications/index.html", "publications", "Publications"],
   ["about/index.html", "about", "About"],
-  ["cv/index.html", "cv", "Profile"],
-  ["blog/index.html", "research", "Research"],
+  ["cv/index.html", "cv", "CV"],
+  ["blog/index.html", "projects", "Projects"],
 ]) {
   const destination = resolve(root, path);
   await mkdir(resolve(destination, ".."), { recursive: true });
@@ -517,7 +564,7 @@ for (const [path, page, title] of [
 
 await rm(outputDirectory, { recursive: true, force: true });
 await mkdir(outputDirectory, { recursive: true });
-await writeFile(resolve(outputDirectory, "index.html"), staticPage("research", "Research"));
+await writeFile(resolve(outputDirectory, "index.html"), staticPage("projects", "Projects"));
 for (const post of posts) {
   const destination = resolve(outputDirectory, post.date.slice(0, 4), post.slug, "index.html");
   await mkdir(resolve(destination, ".."), { recursive: true });
