@@ -100,6 +100,7 @@ jobs:
         run: |
           mkdir -p _site/assets
           cp -R assets/_draft _site/assets/
+          touch _site/.nojekyll
       - name: Purge unused CSS 🧹
         run: |
           npm install -g purgecss
