@@ -42,6 +42,10 @@ jobs:
           pip3 install --upgrade jupyter
           export JEKYLL_ENV=production
           bundle exec jekyll build
+      - name: Copy interactive figure assets
+        run: |
+          mkdir -p _site/assets
+          cp -R assets/_draft _site/assets/
       - name: Purge unused CSS 🧹
         run: |
           npm install -g purgecss
