@@ -1027,10 +1027,11 @@ Other future work to be explored also include
 
 ## Acknowledgements
 
-I'm very grateful to David Daniel for funding the compute for the experiments.
+I'm very grateful to [David Daniel](https://twitter.com/dayveed_d) for funding the compute for the experiments.
 
 I also found so many materials useful when I was starting with the project,
 - [Simon Boehm's](https://siboehm.com/) blogs on DP, PP optimizing matmul.
 - [Lilian Weng's](https://lilianweng.github.io/posts/2021-09-25-train-large/) blog on training parallelism.
 - [Jax scaling book](https://jax-ml.github.io/scaling-book/) on building nice intuition for the communication patterns and theoretical cost accounting.
+- [GPU MODE](https://www.gpumode.com/home) and their speakers for high-alpha content.
 - [ChatGPT](https://chatgpt.com/) for its infinite patience in answering clarifying questions, working through concepts and helping with the initial draft of the blogpost.
