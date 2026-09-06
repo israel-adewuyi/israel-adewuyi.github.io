@@ -279,42 +279,26 @@ body {
   line-height: 1.5;
 }
 .site--ledger .focus-list {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-width: 680px;
   margin: 0;
   padding: 0;
-  border-top: 1px solid var(--line);
-  border-left: 1px solid var(--line);
   list-style: none;
 }
-.site--ledger .focus-list li {
-  display: grid;
-  grid-template-columns: 44px minmax(0, 1fr);
-  min-height: 195px;
-  gap: 14px;
-  padding: 24px;
-  border-right: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
-}
-.site--ledger .focus-list > li > span {
-  color: var(--blue);
-  font:
-    700 10px/1 Consolas,
-    monospace;
+.site--ledger .focus-list li + li {
+  margin-top: 24px;
 }
 .site--ledger .focus-list strong {
   display: block;
-  margin-bottom: 12px;
-  font:
-    400 27px/1.05 Georgia,
-    serif;
+  margin-bottom: 6px;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.4;
 }
 .site--ledger .focus-list p {
-  max-width: 290px;
   margin: 0;
   color: var(--muted);
-  font-size: 13px;
-  line-height: 1.55;
+  font-size: 15px;
+  line-height: 1.6;
 }
 .site--ledger .post-list {
   border-top: 1px solid var(--line);
@@ -755,7 +739,6 @@ body {
     padding: 56px 22px 44px;
   }
   .site--ledger .theme-grid,
-  .site--ledger .focus-list,
   .site--ledger .cv-grid {
     grid-template-columns: 1fr;
   }

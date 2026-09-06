@@ -53,7 +53,14 @@
     return `<header class="page-hero home-hero"><p class="prompt">$ whoami</p><h1>${escape(
       data.identity.name
     )}</h1><div class="hero-foot"><p>${escape(data.identity.intro)}</p></div></header>
-      <section class="section current-section"><span class="section-label">00 / Current focus</span><div class="section-body"><ol class="focus-list"><li><span>01</span><div><strong>Reinforcement learning</strong><p>Current methods understandably favor stable optimization, but may leave too much of the policy space unexplored.</p></div></li><li><span>02</span><div><strong>Distributed training</strong><p>Hardware limits should be baseline for both training and inference.</p></div></li><li><span>03</span><div><strong>Mechanistic interpretability</strong><p>We can eventually understand and map the components that produce a model's behavior.</p></div></li><li><span>04</span><div><strong>Representation learning</strong><p>Understanding how information is encoded is necessary for understanding why a model acts as it does.</p></div></li></ol></div></section>
+      <section class="section current-section"><span class="section-label">00 / How I think about my work</span><div class="section-body">
+        <ul class="focus-list" role="list">
+          <li><strong>Reinforcement learning</strong><p>Current methods understandably favor stable optimization, but may leave too much of the policy space unexplored.</p></li>
+          <li><strong>Distributed training</strong><p>Hardware limits should be baseline for both training and inference.</p></li>
+          <li><strong>Mechanistic interpretability</strong><p>We can eventually understand and map the components that produce a model's behavior.</p></li>
+          <li><strong>Representation learning</strong><p>Understanding how information is encoded is necessary for understanding why a model acts as it does.</p></li>
+        </ul>
+      </div></section>
       <section class="section" id="featured"><span class="section-label">01 / Selected work</span><div class="section-body"><div class="post-list">${featured}</div><a class="section-link" href="${
         routes.projects
       }">View projects &rarr;</a>${contactBlock("contact-card--mobile")}</div></section>`;
