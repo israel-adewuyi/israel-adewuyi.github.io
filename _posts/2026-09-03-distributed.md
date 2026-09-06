@@ -17,7 +17,7 @@ topic: "Distributed training"
 
 ## tl;dr
 
-- [nanoTitan](https://github.com/israel-adewuyi/nanoTitan) is a distributed training stack, composing DP, PP and EP.
+- [nanoTitan](https://github.com/israel-adewuyi/nanoTitan) is a distributed training repo, composing DP, PP and EP.
 - We give a deep dive into the details of each of these parallelism strategies and their composition, as well as other surrounding details like gradient clipping.
 - Below is a summary of the results across experiments on 2, 4 and 8 GPUs. **Experiments under the same number of gpus** processes the same number of tokens / step, to keep comparison relatively principled.
 <figure id="fig-parallelism-results-explorer" class="l-page">
@@ -706,7 +706,7 @@ From the PP section, each stage is aware of the rank of the next stage and previ
 The model abstraction of treating a local model as just a collection of `nn.Modules` vs (Embed + PosEmbed + TransformerBlock + Unembed) proved useful here. The PP coordinate determines which modules a rank owns. All ranks with the same $p$ i.e $(0,p),(1,p),\ldots,(P_{DP}-1,p)$ construct the same stage parameters. The optimizer states are also with respect to the stage parameters.
 
 <!-- ??? In intro, we don't talk about much fwd and bwd pass for individual parallelisms, would go indepth, for the compositions. -->
-To ensure that training starts with identical parameters, each rank builds its own model parameters, but for each pipeline stage p, we broadcast from all the ranks with DP = 0 to the DP group containing all replicas of stage p.
+To ensure that training starts with identical parameters, each rank builds its own model parameters, but for each pipeline stage `p`, we broadcast from all the ranks with DP = 0 to the DP group containing all replicas of stage `p`.
 
 #### Forward pass
 
@@ -897,7 +897,7 @@ Ranks with the same `dp_rank` form an EP group and exchange token assignments wi
 
 The `ep_rank` determines which $\frac{E}{P_{EP}}$ experts a rank loads. Across the DP groups however, there are different replication patterns and this determines the broadcast pattern for the `state_dict()`. 
 - Expert parameters are replicated across *expert DP group*, but sharded across EP group. This means at the start of the training, for each expert DP group, the rank with `dp_rank = 0` broadcasts its expert parameters to the other DP replicas with the same `ep_rank`.
-- Non-expert parameters are replicated across every rank. Rank 0 broadcasts the non-expert parameters state_dict to every rank in the world_size.
+- Non-expert parameters are replicated across both the DP and EP dimensions, so rank 0 broadcasts the non-expert parameters `state_dict()` to every rank in the world_size.
 
 #### Forward pass + Backward pass
 
